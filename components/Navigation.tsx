@@ -285,9 +285,6 @@ export default function Navigation() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Tombol & Popover Notifikasi Mobile */}
-          {renderNotificationWidget("mobile")}
-
           {currentUser && (
             <div className="flex items-center gap-1.5 bg-surface-container/80 border border-outline-variant/40 px-2.5 py-1 rounded-full">
               <span className="text-[11px] font-bold text-on-surface">
@@ -298,13 +295,9 @@ export default function Navigation() {
               </span>
             </div>
           )}
-          <button
-            onClick={handleLogout}
-            title="Keluar / Logout"
-            className="p-2 rounded-full hover:bg-error-container/40 text-error transition-all duration-300"
-          >
-            <span className="material-symbols-outlined text-xl">logout</span>
-          </button>
+
+          {/* Tombol & Popover Notifikasi Mobile di pojok paling kanan */}
+          {renderNotificationWidget("mobile")}
         </div>
       </header>
 
@@ -374,10 +367,10 @@ export default function Navigation() {
           )}
         </nav>
 
-        {/* User Profile & Logout Box Footer */}
+        {/* User Profile Box Footer */}
         <div className="pt-4 border-t border-outline-variant/30">
           {currentUser ? (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/20">
+            <div className="flex items-center p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/20">
               <div className="flex items-center gap-2.5 overflow-hidden">
                 <div className="w-9 h-9 rounded-full bg-secondary-container/40 flex items-center justify-center text-secondary font-bold text-sm shrink-0 border border-secondary/30">
                   {currentUser.name.charAt(0).toUpperCase()}
@@ -391,13 +384,6 @@ export default function Navigation() {
                   </span>
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                title="Keluar aplikasi"
-                className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-all shrink-0"
-              >
-                <span className="material-symbols-outlined text-lg">logout</span>
-              </button>
             </div>
           ) : (
             <Link

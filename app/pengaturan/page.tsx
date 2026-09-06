@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { getPricingAndSettings, updatePricing, updateSetting } from "../actions";
+import { useRouter } from "next/navigation";
+import { getPricingAndSettings, updatePricing, updateSetting, getCurrentUser, logoutUser } from "../actions";
 
 interface Pricing {
   id: string;
@@ -14,6 +15,13 @@ interface Pricing {
 interface Setting {
   id: string;
   autoWhatsappReminders: boolean;
+}
+
+interface UserSession {
+  id: string;
+  username: string;
+  name: string;
+  role: "ADMIN" | "EDIT" | "VIEW";
 }
 
 const FACILITIES_LIST = [
@@ -35,8 +43,10 @@ const FACILITIES_LIST = [
 // output : React Client Component JSX
 // end of helper ------------------------------------------------------------------
 export default function PengaturanPage() {
+  const router = useRouter();
   const [pricing, setPricing] = useState<Pricing | null>(null);
   const [setting, setSetting] = useState<Setting | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
   const [activeSheet, setActiveSheet] = useState<"PRICE" | "FACILITIES" | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -63,6 +73,21 @@ export default function PengaturanPage() {
     if (data.setting) {
       setSetting(data.setting);
     }
+    const user = await getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+    }
+  };
+
+  // helper --------------------------------------------------------------------------
+  // function untuk memproses logout pengguna dari halaman Pengaturan
+  // input param : none
+  // output : void (menghapus cookie dan mengarahkan ke /login)
+  // end of helper ------------------------------------------------------------------
+  const handleLogout = async () => {
+    await logoutUser();
+    router.push("/login");
+    router.refresh();
   };
 
   const handleToggleAutoWhatsapp = (checked: boolean) => {
@@ -105,11 +130,14 @@ export default function PengaturanPage() {
 
       {/* Header Profile */}
       <section className="flex flex-col items-center justify-center pt-md pb-lg text-center relative z-10 animate-slide-up stagger-1">
-        <h2 className="font-headline-md text-headline-md text-primary-container mb-1">
-          Abi Homestay Pusat
+        <div className="w-14 h-14 rounded-full bg-secondary-container/50 text-secondary font-bold text-xl flex items-center justify-center mb-3 border border-secondary/30 shadow-soft-teal">
+          {currentUser ? currentUser.name.charAt(0).toUpperCase() : "A"}
+        </div>
+        <h2 className="font-headline-md text-headline-md text-primary-container mb-1 font-bold">
+          {currentUser ? currentUser.name : "Abi Homestay Pusat"}
         </h2>
         <div className="inline-flex items-center gap-2 bg-secondary text-on-secondary font-label-sm text-label-sm px-3 py-1 rounded-full shadow-sm">
-          Administrator
+          {currentUser ? currentUser.role : "Administrator"}
         </div>
       </section>
 
@@ -226,6 +254,31 @@ export default function PengaturanPage() {
               </div>
             </div>
             <span className="material-symbols-outlined text-outline-variant group-hover:text-secondary transition-colors">
+              chevron_right
+            </span>
+          </button>
+
+          <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="menu-item w-full flex items-center justify-between p-3 rounded-lg hover:bg-error-container/20 group bg-surface-container-lowest transition-colors press-effect"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-error-container/40 flex items-center justify-center text-error group-hover:bg-error-container group-hover:text-on-error-container transition-colors">
+                <span className="material-symbols-outlined">logout</span>
+              </div>
+              <div className="text-left">
+                <p className="font-body-md text-body-md font-bold text-error">
+                  Keluar dari Akun
+                </p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">
+                  Akhiri sesi penggunaan aplikasi
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-error/60 group-hover:text-error transition-colors">
               chevron_right
             </span>
           </button>
