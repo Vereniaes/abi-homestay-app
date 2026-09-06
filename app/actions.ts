@@ -59,6 +59,39 @@ export async function getDashboardStats() {
 }
 
 // helper --------------------------------------------------------------------------
+// function untuk mengambil daftar notifikasi aktif (penghuni jatuh tempo & kamar perbaikan)
+// input param : none
+// output : object { dueTenants: Array, maintenanceRooms: Array, totalAlerts: number }
+// end of helper ------------------------------------------------------------------
+export async function getNotificationAlerts() {
+  try {
+    const dueTenants = await prisma.tenant.findMany({
+      where: { status: "EXPIRING_SOON" },
+      include: { room: true },
+      take: 10,
+    });
+
+    const maintenanceRooms = await prisma.room.findMany({
+      where: { status: "MAINTENANCE" },
+      take: 10,
+    });
+
+    return {
+      dueTenants,
+      maintenanceRooms,
+      totalAlerts: dueTenants.length + maintenanceRooms.length,
+    };
+  } catch (error) {
+    console.error("Error in getNotificationAlerts:", error);
+    return {
+      dueTenants: [],
+      maintenanceRooms: [],
+      totalAlerts: 0,
+    };
+  }
+}
+
+// helper --------------------------------------------------------------------------
 // function untuk mengambil daftar seluruh kamar beserta data penghuni dengan try-catch
 // input param : none
 // output : array of Room
