@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // helper --------------------------------------------------------------------------
-// function SplashScreen overlay animasi awal masuk aplikasi
+// function SplashScreen overlay animasi awal masuk aplikasi (durasi 2.0 detik)
 // input param : none
 // output : React Component JSX atau null jika sudah selesai
 // end of helper ------------------------------------------------------------------
@@ -22,9 +22,9 @@ export default function SplashScreen() {
       const timer2 = setTimeout(() => {
         setVisible(false);
         sessionStorage.setItem("splashShown", "true");
-      }, 300);
+      }, 700);
       return () => clearTimeout(timer2);
-    }, 400);
+    }, 2000);
 
     return () => clearTimeout(timer1);
   }, []);

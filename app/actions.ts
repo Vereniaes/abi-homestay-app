@@ -90,7 +90,6 @@ export async function getNotificationAlerts() {
     };
   }
 }
-
 // helper --------------------------------------------------------------------------
 // function untuk mengambil daftar seluruh kamar beserta data penghuni dengan try-catch
 // input param : none

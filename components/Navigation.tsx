@@ -130,135 +130,144 @@ export default function Navigation() {
   };
 
   // helper --------------------------------------------------------------------------
-  // function untuk merender Tombol Lonceng Notifikasi & Popover Dropdown
+  // function untuk merender Tombol Lonceng Notifikasi & Popover Dropdown dengan posisi adaptif
   // input param : position ("mobile" | "desktop")
   // output : React JSX Component Popover Notifikasi
   // end of helper ------------------------------------------------------------------
-  const renderNotificationWidget = () => (
-    <div className="relative" ref={popoverRef}>
-      <button
-        type="button"
-        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-        title="Pemberitahuan / Notifikasi"
-        className="relative p-2 rounded-full hover:bg-surface-variant/40 text-on-surface-variant hover:text-secondary transition-all duration-300 flex items-center justify-center press-effect"
-      >
-        <span className="material-symbols-outlined text-xl">notifications</span>
-        {alerts.totalAlerts > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-error text-on-error text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-surface animate-pulse">
-            {alerts.totalAlerts}
-          </span>
-        )}
-      </button>
+  const renderNotificationWidget = (position: "mobile" | "desktop") => {
+    const popoverPositionClass =
+      position === "mobile"
+        ? "right-0 top-12 w-[calc(100vw-2rem)] max-w-sm"
+        : "left-full top-0 ml-3 w-80 sm:w-96";
 
-      {/* Popover Dropdown Notifikasi */}
-      {isNotificationOpen && (
-        <div className="absolute right-0 top-12 w-80 sm:w-96 bg-surface-container-lowest/95 backdrop-blur-xl border border-outline-variant/30 rounded-2xl shadow-xl z-50 p-4 animate-slide-up text-on-surface">
-          {/* Header Popover */}
-          <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary text-xl">
-                notifications_active
-              </span>
-              <h3 className="font-headline-md text-label-md font-bold text-on-surface">
-                Pemberitahuan
-              </h3>
-              {alerts.totalAlerts > 0 && (
-                <span className="px-2 py-0.5 bg-error-container text-on-error-container text-[10px] font-extrabold rounded-full">
-                  {alerts.totalAlerts} Baru
+    return (
+      <div className="relative" ref={popoverRef}>
+        <button
+          type="button"
+          onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+          title="Pemberitahuan / Notifikasi"
+          className="relative p-2 rounded-full hover:bg-surface-variant/40 text-on-surface-variant hover:text-secondary transition-all duration-300 flex items-center justify-center press-effect"
+        >
+          <span className="material-symbols-outlined text-xl">notifications</span>
+          {alerts.totalAlerts > 0 && (
+            <span className="absolute top-1 right-1 w-4 h-4 bg-error text-on-error text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-surface animate-pulse">
+              {alerts.totalAlerts}
+            </span>
+          )}
+        </button>
+
+        {/* Popover Dropdown Notifikasi */}
+        {isNotificationOpen && (
+          <div
+            className={`absolute ${popoverPositionClass} bg-surface-container-lowest/95 backdrop-blur-xl border border-outline-variant/30 rounded-2xl shadow-xl z-50 p-4 animate-slide-up text-on-surface`}
+          >
+            {/* Header Popover */}
+            <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-xl">
+                  notifications_active
                 </span>
+                <h3 className="font-headline-md text-label-md font-bold text-on-surface">
+                  Pemberitahuan
+                </h3>
+                {alerts.totalAlerts > 0 && (
+                  <span className="px-2 py-0.5 bg-error-container text-on-error-container text-[10px] font-extrabold rounded-full">
+                    {alerts.totalAlerts} Baru
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNotificationOpen(false)}
+                className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-variant/40 transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* Body List Notifikasi */}
+            <div className="flex flex-col gap-2.5 max-h-80 overflow-y-auto pr-1">
+              {alerts.totalAlerts === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-center text-outline">
+                  <span className="material-symbols-outlined text-3xl mb-1 text-secondary/60">
+                    check_circle
+                  </span>
+                  <p className="text-label-md font-medium">Tidak ada pemberitahuan baru</p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                    Semua tagihan sewa dan kondisi kamar dalam keadaan baik.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Daftar Tenant Jatuh Tempo */}
+                  {alerts.dueTenants.map((tenant) => (
+                    <div
+                      key={tenant.id}
+                      className="p-3 bg-tertiary-fixed/30 border border-brand-amber/30 rounded-xl flex items-center justify-between gap-2 transition-all hover:bg-tertiary-fixed/50"
+                    >
+                      <div className="flex items-start gap-2.5 overflow-hidden">
+                        <div className="p-1.5 bg-tertiary-fixed rounded-lg text-brand-amber shrink-0 mt-0.5">
+                          <span className="material-symbols-outlined text-base">payments</span>
+                        </div>
+                        <div className="flex flex-col overflow-hidden">
+                          <span className="text-label-sm font-bold text-on-surface truncate">
+                            Kamar {tenant.room?.number || "-"} - {tenant.name}
+                          </span>
+                          <span className="text-[11px] text-on-surface-variant font-medium">
+                            Akan Jatuh Tempo
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={getWhatsAppUrl(tenant.phone)}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => setIsNotificationOpen(false)}
+                        className="px-2.5 py-1 bg-secondary text-on-secondary rounded-lg text-[11px] font-semibold hover:bg-on-secondary-fixed-variant transition-all shrink-0 active:scale-95 flex items-center gap-1 shadow-sm"
+                      >
+                        <span className="material-symbols-outlined text-xs">chat</span>
+                        <span>Ingatkan</span>
+                      </a>
+                    </div>
+                  ))}
+
+                  {/* Daftar Kamar Perbaikan */}
+                  {alerts.maintenanceRooms.map((room) => (
+                    <div
+                      key={room.id}
+                      className="p-3 bg-error-container/20 border border-error/20 rounded-xl flex items-center justify-between gap-2 transition-all hover:bg-error-container/30"
+                    >
+                      <div className="flex items-start gap-2.5 overflow-hidden">
+                        <div className="p-1.5 bg-error-container rounded-lg text-error shrink-0 mt-0.5">
+                          <span className="material-symbols-outlined text-base">build</span>
+                        </div>
+                        <div className="flex flex-col overflow-hidden">
+                          <span className="text-label-sm font-bold text-on-surface truncate">
+                            Kamar {room.number}
+                          </span>
+                          <span className="text-[11px] text-error font-medium">
+                            Perlu Perbaikan / Maintenance
+                          </span>
+                        </div>
+                      </div>
+                      <Link
+                        href="/kamar"
+                        onClick={() => setIsNotificationOpen(false)}
+                        className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded-lg text-[11px] font-semibold hover:bg-surface-variant transition-all shrink-0 active:scale-95 flex items-center gap-1"
+                      >
+                        <span>Detail</span>
+                        <span className="material-symbols-outlined text-xs">chevron_right</span>
+                      </Link>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setIsNotificationOpen(false)}
-              className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-variant/40 transition-colors"
-            >
-              <span className="material-symbols-outlined text-base">close</span>
-            </button>
           </div>
-
-          {/* Body List Notifikasi */}
-          <div className="flex flex-col gap-2.5 max-h-80 overflow-y-auto pr-1">
-            {alerts.totalAlerts === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center text-outline">
-                <span className="material-symbols-outlined text-3xl mb-1 text-secondary/60">
-                  check_circle
-                </span>
-                <p className="text-label-md font-medium">Tidak ada pemberitahuan baru</p>
-                <p className="text-[11px] text-on-surface-variant mt-0.5">
-                  Semua tagihan sewa dan kondisi kamar dalam keadaan baik.
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Daftar Tenant Jatuh Tempo */}
-                {alerts.dueTenants.map((tenant) => (
-                  <div
-                    key={tenant.id}
-                    className="p-3 bg-tertiary-fixed/30 border border-brand-amber/30 rounded-xl flex items-center justify-between gap-2 transition-all hover:bg-tertiary-fixed/50"
-                  >
-                    <div className="flex items-start gap-2.5 overflow-hidden">
-                      <div className="p-1.5 bg-tertiary-fixed rounded-lg text-brand-amber shrink-0 mt-0.5">
-                        <span className="material-symbols-outlined text-base">payments</span>
-                      </div>
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="text-label-sm font-bold text-on-surface truncate">
-                          Kamar {tenant.room?.number || "-"} - {tenant.name}
-                        </span>
-                        <span className="text-[11px] text-on-surface-variant font-medium">
-                          Akan Jatuh Tempo
-                        </span>
-                      </div>
-                    </div>
-                    <a
-                      href={getWhatsAppUrl(tenant.phone)}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => setIsNotificationOpen(false)}
-                      className="px-2.5 py-1 bg-secondary text-on-secondary rounded-lg text-[11px] font-semibold hover:bg-on-secondary-fixed-variant transition-all shrink-0 active:scale-95 flex items-center gap-1 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-xs">chat</span>
-                      <span>Ingatkan</span>
-                    </a>
-                  </div>
-                ))}
-
-                {/* Daftar Kamar Perbaikan */}
-                {alerts.maintenanceRooms.map((room) => (
-                  <div
-                    key={room.id}
-                    className="p-3 bg-error-container/20 border border-error/20 rounded-xl flex items-center justify-between gap-2 transition-all hover:bg-error-container/30"
-                  >
-                    <div className="flex items-start gap-2.5 overflow-hidden">
-                      <div className="p-1.5 bg-error-container rounded-lg text-error shrink-0 mt-0.5">
-                        <span className="material-symbols-outlined text-base">build</span>
-                      </div>
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="text-label-sm font-bold text-on-surface truncate">
-                          Kamar {room.number}
-                        </span>
-                        <span className="text-[11px] text-error font-medium">
-                          Perlu Perbaikan / Maintenance
-                        </span>
-                      </div>
-                    </div>
-                    <Link
-                      href="/kamar"
-                      onClick={() => setIsNotificationOpen(false)}
-                      className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded-lg text-[11px] font-semibold hover:bg-surface-variant transition-all shrink-0 active:scale-95 flex items-center gap-1"
-                    >
-                      <span>Detail</span>
-                      <span className="material-symbols-outlined text-xs">chevron_right</span>
-                    </Link>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -277,7 +286,7 @@ export default function Navigation() {
 
         <div className="flex items-center gap-2">
           {/* Tombol & Popover Notifikasi Mobile */}
-          {renderNotificationWidget()}
+          {renderNotificationWidget("mobile")}
 
           {currentUser && (
             <div className="flex items-center gap-1.5 bg-surface-container/80 border border-outline-variant/40 px-2.5 py-1 rounded-full">
@@ -314,7 +323,7 @@ export default function Navigation() {
           </div>
 
           {/* Tombol & Popover Notifikasi Desktop */}
-          {renderNotificationWidget()}
+          {renderNotificationWidget("desktop")}
         </div>
 
         <nav className="flex flex-col gap-2 flex-1">

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import SplashScreen from "./SplashScreen";
 import AnimatedCounter from "./AnimatedCounter";
 import { getWhatsAppUrl } from "@/lib/phone";
 
@@ -27,8 +26,6 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
 
   return (
     <>
-      <SplashScreen />
-
       <main className="pt-20 md:pt-8 px-4 md:px-6 max-w-container-max mx-auto pb-28 md:pb-12">
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-end mb-6 pt-2">
