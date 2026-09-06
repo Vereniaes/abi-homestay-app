@@ -137,8 +137,8 @@ export default function Navigation() {
   const renderNotificationWidget = (position: "mobile" | "desktop") => {
     const popoverPositionClass =
       position === "mobile"
-        ? "right-0 top-12 w-[calc(100vw-2rem)] max-w-sm"
-        : "left-full top-0 ml-3 w-80 sm:w-96";
+        ? "right-0 top-12 w-[calc(100vw-2rem)] sm:w-[360px] max-w-[360px]"
+        : "left-full top-0 ml-3 w-[360px] max-w-[360px]";
 
     return (
       <div className="relative" ref={popoverRef}>
