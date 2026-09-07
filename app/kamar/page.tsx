@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition, useMemo } from "react";
+// app/kamar/page.tsx
+// -> handling manajemen kamar dan inventaris
+//      -> menampilkan grid daftar kamar (tersedia, terisi, perbaikan)
+//      -> menangani pencarian nomor kamar
+//      -> menangani direct link auto-open modal detail kamar dari parameter URL ?room=XX
+// -> kelola status inventaris (baik / perbaikan) dan pembaruan database Prisma
+
+import { useEffect, useState, useTransition, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { getRooms, updateRoomInventory } from "../actions";
 
 interface Tenant {
@@ -10,8 +18,6 @@ interface Tenant {
   dateIn: Date;
   dateDue: Date | null;
 }
-
-// interface 
 
 interface Room {
   id: string;
@@ -30,11 +36,14 @@ const INVENTORY_ITEMS = [
 ];
 
 // helper --------------------------------------------------------------------------
-// function Halaman Manajemen Kamar
+// function Komponen Utama Manajemen Kamar
 // input param : none
-// output : React Client Component JSX
+// output : React Client Component JSX untuk grid kamar & modal detail
 // end of helper ------------------------------------------------------------------
-export default function KamarPage() {
+function KamarContent() {
+  const searchParams = useSearchParams();
+  const roomQuery = searchParams ? searchParams.get("room") : null;
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -50,6 +59,25 @@ export default function KamarPage() {
     setRooms(data as Room[]);
   };
 
+  // helper --------------------------------------------------------------------------
+  // function untuk membuka modal detail kamar dan deteksi parameter URL ?room=XX
+  // input param : rooms (array), roomQuery (string)
+  // output : void (membuka modal detail kamar otomatis jika parameter cocok)
+  // end of helper ------------------------------------------------------------------
+  useEffect(() => {
+    if (rooms.length > 0 && roomQuery) {
+      const targetRoom = rooms.find(
+        (r) =>
+          r.number === roomQuery ||
+          r.number.toLowerCase() === roomQuery.toLowerCase() ||
+          r.id === roomQuery
+      );
+      if (targetRoom) {
+        openModal(targetRoom);
+      }
+    }
+  }, [rooms, roomQuery]);
+
   const openModal = (room: Room) => {
     setSelectedRoom(room);
     if (Array.isArray(room.inventories)) {
@@ -61,6 +89,9 @@ export default function KamarPage() {
 
   const closeModal = () => {
     setSelectedRoom(null);
+    if (typeof window !== "undefined" && window.history) {
+      window.history.replaceState({}, "", "/kamar");
+    }
   };
 
   const handleToggleInventory = (index: number, state: string) => {
@@ -290,5 +321,18 @@ export default function KamarPage() {
         </div>
       )}
     </main>
+  );
+}
+
+// helper --------------------------------------------------------------------------
+// function Wrapper Suspense Halaman Manajemen Kamar
+// input param : none
+// output : React Component Halaman Kamar terbungkus Suspense
+// end of helper ------------------------------------------------------------------
+export default function KamarPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-outline">Memuat data kamar...</div>}>
+      <KamarContent />
+    </Suspense>
   );
 }

@@ -118,10 +118,15 @@ export default function Navigation() {
     }
   };
 
+  // helper --------------------------------------------------------------------------
+  // function untuk mendapatkan style badge warna berdasarkan role pengguna
+  // input param : role (string)
+  // output : string (kelas css tailwind untuk background, text, & border)
+  // end of helper ------------------------------------------------------------------
   const getRoleBadgeStyle = (role?: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-primary-container text-on-primary-fixed-variant border-primary-fixed-dim/40";
+        return "bg-[#0F172A] text-[#FCD34D] border-amber-400/40";
       case "EDIT":
         return "bg-secondary-container/40 text-secondary border-secondary/30";
       default:
@@ -251,7 +256,7 @@ export default function Navigation() {
                         </div>
                       </div>
                       <Link
-                        href="/kamar"
+                        href={`/kamar?room=${encodeURIComponent(room.number)}`}
                         onClick={() => setIsNotificationOpen(false)}
                         className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded-lg text-[11px] font-semibold hover:bg-surface-variant transition-all shrink-0 active:scale-95 flex items-center gap-1"
                       >

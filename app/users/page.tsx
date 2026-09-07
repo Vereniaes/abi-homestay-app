@@ -115,10 +115,15 @@ export default function UsersPage() {
     u.username.toLowerCase().includes(search.toLowerCase())
   );
 
+  // helper --------------------------------------------------------------------------
+  // function untuk mendapatkan style badge warna berdasarkan role pengguna
+  // input param : role (string)
+  // output : string (kelas css tailwind untuk background, text, & border)
+  // end of helper ------------------------------------------------------------------
   const getRoleBadgeStyle = (role?: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-primary-container text-on-primary-fixed-variant border-primary-fixed-dim/40";
+        return "bg-[#0F172A] text-[#FCD34D] border-amber-400/40";
       case "EDIT":
         return "bg-secondary-container/40 text-secondary border-secondary/30";
       default:
