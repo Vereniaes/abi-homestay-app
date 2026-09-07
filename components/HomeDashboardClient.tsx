@@ -175,7 +175,10 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                     <p className="font-label-sm text-on-surface-variant">Laporan: AC Bocor / Perbaikan</p>
                   </div>
                 </div>
-                <Link href="/kamar" className="px-3 py-1 bg-surface-container rounded-lg font-label-sm text-primary hover:bg-surface-variant transition-all duration-300 active:scale-95">
+                <Link
+                  href={`/kamar?room=${encodeURIComponent(stats.maintenanceRoomsList[0].number)}`}
+                  className="px-3 py-1 bg-surface-container rounded-lg font-label-sm text-primary hover:bg-surface-variant transition-all duration-300 active:scale-95"
+                >
                   Detail
                 </Link>
               </div>

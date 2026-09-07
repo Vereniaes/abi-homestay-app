@@ -66,12 +66,16 @@ function KamarContent() {
   // end of helper ------------------------------------------------------------------
   useEffect(() => {
     if (rooms.length > 0 && roomQuery) {
-      const targetRoom = rooms.find(
-        (r) =>
+      const queryDigits = roomQuery.replace(/[^0-9]/g, "");
+      const targetRoom = rooms.find((r) => {
+        const roomDigits = r.number.replace(/[^0-9]/g, "");
+        return (
           r.number === roomQuery ||
           r.number.toLowerCase() === roomQuery.toLowerCase() ||
-          r.id === roomQuery
-      );
+          r.id === roomQuery ||
+          (queryDigits && roomDigits && parseInt(queryDigits, 10) === parseInt(roomDigits, 10))
+        );
+      });
       if (targetRoom) {
         openModal(targetRoom);
       }
