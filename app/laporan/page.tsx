@@ -50,6 +50,37 @@ export default function LaporanPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(() => !hasValidCache);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const totalPages = Math.ceil(transactions.length / itemsPerPage) || 1;
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (validCurrentPage - 1) * itemsPerPage;
+    return transactions.slice(start, start + itemsPerPage);
+  }, [transactions, validCurrentPage, itemsPerPage]);
+
+  const visiblePages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (validCurrentPage <= 3) {
+      return [1, 2, 3, 4, 5];
+    }
+    if (validCurrentPage >= totalPages - 2) {
+      return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [
+      validCurrentPage - 2,
+      validCurrentPage - 1,
+      validCurrentPage,
+      validCurrentPage + 1,
+      validCurrentPage + 2,
+    ];
+  }, [totalPages, validCurrentPage]);
+
   useEffect(() => {
     const cached = getClientCache<Transaction[]>("transactions");
     if (cached && cached.length > 0) {
@@ -118,6 +149,7 @@ export default function LaporanPage() {
       setSelectedTenantId("");
       // Invalidasi cache agar data baru langsung terlihat
       clearClientCache("transactions");
+      setCurrentPage(1);
       await fetchData();
     });
   };
@@ -181,9 +213,9 @@ export default function LaporanPage() {
           <h3 className="text-headline-md font-bold text-primary-container text-[20px]">
             Riwayat Transaksi Terbaru
           </h3>
-          <button className="text-secondary text-label-md font-semibold hover:underline">
-            Lihat Semua
-          </button>
+          <span className="text-secondary text-label-sm font-semibold bg-secondary/10 px-2.5 py-1 rounded-full">
+            {transactions.length} Transaksi
+          </span>
         </div>
 
         <div className="space-y-3">
@@ -198,7 +230,7 @@ export default function LaporanPage() {
               <p className="font-medium text-body-md">Belum ada riwayat transaksi</p>
             </div>
           ) : (
-            transactions.map((tx, idx) => {
+            paginatedTransactions.map((tx, idx) => {
             const isExpanded = expandedId === tx.id;
             const isAboveFold = idx < 6;
             const animDelay = isAboveFold ? `${((idx + 1) * 0.05).toFixed(2)}s` : "0s";
@@ -290,6 +322,64 @@ export default function LaporanPage() {
           })
         )}
         </div>
+
+        {/* Pagination Controls */}
+        {!isLoading && transactions.length > itemsPerPage && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 pb-2 px-1 text-on-surface-variant">
+            <span className="text-label-sm text-outline">
+              Menampilkan {Math.min((validCurrentPage - 1) * itemsPerPage + 1, transactions.length)}-
+              {Math.min(validCurrentPage * itemsPerPage, transactions.length)} dari {transactions.length} transaksi
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setExpandedId(null);
+                  setCurrentPage((p) => Math.max(1, p - 1));
+                }}
+                disabled={validCurrentPage <= 1}
+                aria-label="Halaman sebelumnya"
+                className="flex items-center justify-center w-8 h-8 rounded-xl border border-surface-variant bg-surface text-on-surface disabled:opacity-30 disabled:pointer-events-none hover:bg-surface-container-lowest transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {visiblePages.map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => {
+                      setExpandedId(null);
+                      setCurrentPage(pageNum);
+                    }}
+                    className={`w-8 h-8 rounded-xl text-label-sm font-semibold transition-all flex items-center justify-center ${
+                      validCurrentPage === pageNum
+                        ? "bg-primary text-on-primary shadow-sm"
+                        : "bg-surface hover:bg-surface-container-lowest text-on-surface-variant border border-surface-variant"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setExpandedId(null);
+                  setCurrentPage((p) => Math.min(totalPages, p + 1));
+                }}
+                disabled={validCurrentPage >= totalPages}
+                aria-label="Halaman selanjutnya"
+                className="flex items-center justify-center w-8 h-8 rounded-xl border border-surface-variant bg-surface text-on-surface disabled:opacity-30 disabled:pointer-events-none hover:bg-surface-container-lowest transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Modal Popup: Catat Pembayaran */}

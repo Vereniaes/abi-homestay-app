@@ -449,7 +449,7 @@ export async function getTransactions() {
       orderBy: {
         date: "desc",
       },
-      take: 20,
+      take: 100,
     });
   } catch (error) {
     console.error("Error in getTransactions:", error);
