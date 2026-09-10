@@ -9,12 +9,14 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get("abi_session")?.value;
   let isAuthenticated = false;
+  let userRole = "";
 
   if (sessionCookie) {
     try {
       const parsed = JSON.parse(sessionCookie);
       if (parsed && parsed.id) {
         isAuthenticated = true;
+        userRole = parsed.role || "";
       }
     } catch {
       isAuthenticated = false;
@@ -32,6 +34,22 @@ export function middleware(request: NextRequest) {
   if (isAuthenticated && isLoginPage) {
     const homeUrl = new URL("/", request.url);
     return NextResponse.redirect(homeUrl);
+  }
+
+  // helper --------------------------------------------------------------------------
+  // proteksi rute khusus role ADMIN: /laporan, /pengaturan, /users
+  // non-admin yang mengakses rute ini akan dialihkan ke beranda
+  // end of helper ------------------------------------------------------------------
+  if (isAuthenticated && userRole !== "ADMIN") {
+    const isAdminRoute =
+      pathname.startsWith("/laporan") ||
+      pathname.startsWith("/pengaturan") ||
+      pathname.startsWith("/users");
+
+    if (isAdminRoute) {
+      const homeUrl = new URL("/", request.url);
+      return NextResponse.redirect(homeUrl);
+    }
   }
 
   return NextResponse.next();

@@ -108,13 +108,20 @@ export default function Navigation() {
     router.refresh();
   };
 
-  const navItems = [
+  const baseNavItems = [
     { label: "Beranda", href: "/", icon: "home" },
     { label: "Kamar", href: "/kamar", icon: "bed" },
     { label: "Penghuni", href: "/penghuni", icon: "group" },
+  ];
+
+  const adminNavItems = [
     { label: "Laporan", href: "/laporan", icon: "analytics" },
     { label: "Pengaturan", href: "/pengaturan", icon: "settings" },
   ];
+
+  const navItems = currentUser?.role === "ADMIN"
+    ? [...baseNavItems, ...adminNavItems]
+    : baseNavItems;
 
   const getTitle = () => {
     switch (pathname) {
@@ -306,13 +313,21 @@ export default function Navigation() {
 
         <div className="flex items-center gap-2 shrink-0">
           {currentUser && (
-            <div className="flex items-center gap-1.5 bg-surface-container/80 border border-outline-variant/40 px-2.5 py-1 rounded-full max-w-[140px]">
-              <span className="text-[11px] font-bold text-on-surface truncate max-w-[75px] sm:max-w-[100px]">
+            <div className="flex items-center gap-1.5 bg-surface-container/80 border border-outline-variant/40 px-2 py-1 rounded-full max-w-[155px]">
+              <span className="text-[11px] font-bold text-on-surface truncate max-w-[65px] sm:max-w-[90px]">
                 {currentUser.name}
               </span>
               <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border shrink-0 ${getRoleBadgeStyle(currentUser.role)}`}>
                 {currentUser.role}
               </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Keluar dari akun"
+                className="text-outline hover:text-error ml-0.5 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[15px]">logout</span>
+              </button>
             </div>
           )}
 
@@ -390,7 +405,7 @@ export default function Navigation() {
         {/* User Profile Box Footer */}
         <div className="pt-4 border-t border-outline-variant/30">
           {currentUser ? (
-            <div className="flex items-center p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/20">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/20">
               <div className="flex items-center gap-2.5 overflow-hidden">
                 <div className="w-9 h-9 rounded-full bg-secondary-container/40 flex items-center justify-center text-secondary font-bold text-sm shrink-0 border border-secondary/30">
                   {currentUser.name.charAt(0).toUpperCase()}
@@ -404,6 +419,14 @@ export default function Navigation() {
                   </span>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Keluar dari akun"
+                className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors ml-1 shrink-0"
+              >
+                <span className="material-symbols-outlined text-lg">logout</span>
+              </button>
             </div>
           ) : (
             <Link
