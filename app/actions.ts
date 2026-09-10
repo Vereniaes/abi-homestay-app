@@ -747,9 +747,16 @@ export async function getPricingAndSettings() {
           dailyPrice: 150000,
           weeklyPrice: 900000,
           monthlyPrice: 2500000,
+          semesterlyPrice: 14000000,
           yearlyPrice: 28000000,
-        },
+        } as any,
       });
+    } else if (!(pricing as any).semesterlyPrice) {
+      // Fallback jika database sudah ada record tapi belum punya field semesterlyPrice
+      pricing = {
+        ...pricing,
+        semesterlyPrice: 14000000,
+      } as any;
     }
 
     let setting = await prisma.setting.findFirst();
@@ -770,6 +777,7 @@ export async function getPricingAndSettings() {
         dailyPrice: 150000,
         weeklyPrice: 900000,
         monthlyPrice: 2500000,
+        semesterlyPrice: 14000000,
         yearlyPrice: 28000000,
       },
       setting: {
@@ -782,7 +790,7 @@ export async function getPricingAndSettings() {
 
 // helper --------------------------------------------------------------------------
 // function untuk merubah master harga sewa
-// input param : pricingId (string), daily (number), weekly (number), monthly (number), yearly (number)
+// input param : pricingId (string), daily (number), weekly (number), monthly (number), semesterly (number), yearly (number)
 // output : object Pricing
 // end of helper ------------------------------------------------------------------
 export async function updatePricing(
@@ -790,6 +798,7 @@ export async function updatePricing(
   dailyPrice: number,
   weeklyPrice: number,
   monthlyPrice: number,
+  semesterlyPrice: number,
   yearlyPrice: number
 ) {
   try {
@@ -805,8 +814,9 @@ export async function updatePricing(
           dailyPrice,
           weeklyPrice,
           monthlyPrice,
+          semesterlyPrice,
           yearlyPrice,
-        },
+        } as any,
       });
     } else {
       pricing = await prisma.pricing.update({
@@ -815,8 +825,9 @@ export async function updatePricing(
           dailyPrice,
           weeklyPrice,
           monthlyPrice,
+          semesterlyPrice,
           yearlyPrice,
-        },
+        } as any,
       });
     }
     revalidatePath("/pengaturan");

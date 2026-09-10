@@ -87,9 +87,10 @@ model Pricing {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   dailyPrice   Float    @default(150000)
   weeklyPrice  Float    @default(900000)
-  monthlyPrice Float    @default(2500000)
-  yearlyPrice  Float    @default(28000000)
-  updatedAt    DateTime @updatedAt
+  monthlyPrice    Float    @default(2500000)
+  semesterlyPrice Float    @default(14000000)
+  yearlyPrice     Float    @default(28000000)
+  updatedAt       DateTime @updatedAt
 }
 
 model Setting {

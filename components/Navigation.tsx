@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { getCurrentUser, logoutUser, getNotificationAlerts } from "@/app/actions";
 import { getWhatsAppUrl } from "@/lib/phone";
-import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
+import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
 
 interface UserSession {
   id: string;
@@ -103,9 +103,9 @@ export default function Navigation() {
   // output : void (menghapus cookie dan mengarahkan ke /login)
   // end of helper ------------------------------------------------------------------
   const handleLogout = async () => {
+    clearClientCache();
     await logoutUser();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   };
 
   const baseNavItems = [

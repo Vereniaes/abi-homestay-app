@@ -42,7 +42,7 @@ export function getRentAmount(rentType: string, pricing?: any): number {
     if (rentType === "DAILY") return pricing.dailyPrice || 150000;
     if (rentType === "WEEKLY") return pricing.weeklyPrice || 900000;
     if (rentType === "MONTHLY") return pricing.monthlyPrice || 2500000;
-    if (rentType === "SEMESTERLY") return (pricing.monthlyPrice || 2500000) * 6 - 1500000;
+    if (rentType === "SEMESTERLY") return pricing.semesterlyPrice || 14000000;
     if (rentType === "YEARLY") return pricing.yearlyPrice || 28000000;
   }
 
@@ -52,7 +52,7 @@ export function getRentAmount(rentType: string, pricing?: any): number {
     case "WEEKLY":
       return 900000;
     case "SEMESTERLY":
-      return 13500000;
+      return 14000000;
     case "YEARLY":
       return 28000000;
     case "MONTHLY":

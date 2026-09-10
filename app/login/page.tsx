@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { loginUser } from "@/app/actions";
+import { clearClientCache } from "@/lib/client-cache";
 
 // helper --------------------------------------------------------------------------
 // function Halaman Login Utama dengan Centered Glassmorphism Card & Preset Account Selector
@@ -51,8 +52,8 @@ export default function LoginPage() {
     setIsLoading(false);
 
     if (result.success) {
-      router.push("/");
-      router.refresh();
+      clearClientCache();
+      window.location.href = "/";
     } else {
       setErrorMsg(result.message || "Username atau password salah.");
     }

@@ -3,12 +3,14 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getPricingAndSettings, updatePricing, updateSetting, getCurrentUser, logoutUser } from "../actions";
+import { clearClientCache } from "@/lib/client-cache";
 
 interface Pricing {
   id: string;
   dailyPrice: number;
   weeklyPrice: number;
   monthlyPrice: number;
+  semesterlyPrice: number;
   yearlyPrice: number;
 }
 
@@ -55,6 +57,7 @@ export default function PengaturanPage() {
   const [daily, setDaily] = useState("150.000");
   const [weekly, setWeekly] = useState("900.000");
   const [monthly, setMonthly] = useState("2.500.000");
+  const [semesterly, setSemesterly] = useState("14.000.000");
   const [yearly, setYearly] = useState("28.000.000");
 
   useEffect(() => {
@@ -64,10 +67,11 @@ export default function PengaturanPage() {
   const fetchData = async () => {
     const data = await getPricingAndSettings();
     if (data.pricing) {
-      setPricing(data.pricing);
+      setPricing(data.pricing as Pricing);
       setDaily(data.pricing.dailyPrice.toLocaleString("id-ID"));
       setWeekly(data.pricing.weeklyPrice.toLocaleString("id-ID"));
       setMonthly(data.pricing.monthlyPrice.toLocaleString("id-ID"));
+      setSemesterly(((data.pricing as any).semesterlyPrice || 14000000).toLocaleString("id-ID"));
       setYearly(data.pricing.yearlyPrice.toLocaleString("id-ID"));
     }
     if (data.setting) {
@@ -85,9 +89,9 @@ export default function PengaturanPage() {
   // output : void (menghapus cookie dan mengarahkan ke /login)
   // end of helper ------------------------------------------------------------------
   const handleLogout = async () => {
+    clearClientCache();
     await logoutUser();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   };
 
   const handleToggleAutoWhatsapp = (checked: boolean) => {
@@ -105,10 +109,11 @@ export default function PengaturanPage() {
     const d = parseFloat(daily.replace(/[^0-9]/g, ""));
     const w = parseFloat(weekly.replace(/[^0-9]/g, ""));
     const m = parseFloat(monthly.replace(/[^0-9]/g, ""));
+    const s = parseFloat(semesterly.replace(/[^0-9]/g, "")) || 14000000;
     const y = parseFloat(yearly.replace(/[^0-9]/g, ""));
 
     startTransition(async () => {
-      await updatePricing(pricing.id, d, w, m, y);
+      await updatePricing(pricing.id, d, w, m, s, y);
       setActiveSheet(null);
       await fetchData();
     });
@@ -369,6 +374,23 @@ export default function PengaturanPage() {
                       type="text"
                       value={monthly}
                       onChange={(e) => setMonthly(e.target.value)}
+                      className="w-full bg-surface rounded-lg border border-surface-container-high py-3 pl-10 pr-4 font-body-md text-primary-container focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-shadow"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-label-md text-label-md text-on-surface-variant mb-1">
+                    Tarif 6 Bulan (Semesteran)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      value={semesterly}
+                      onChange={(e) => setSemesterly(e.target.value)}
                       className="w-full bg-surface rounded-lg border border-surface-container-high py-3 pl-10 pr-4 font-body-md text-primary-container focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-shadow"
                     />
                   </div>
