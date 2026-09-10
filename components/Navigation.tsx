@@ -27,7 +27,15 @@ interface NotificationAlerts {
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const [formattedDate, setFormattedDate] = useState("Senin, 24 Mei 2024");
+  const [formattedDate] = useState(() => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return new Date().toLocaleDateString("id-ID", options);
+  });
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [alerts, setAlerts] = useState<NotificationAlerts>({
@@ -39,15 +47,6 @@ export default function Navigation() {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    };
-    const today = new Date().toLocaleDateString("id-ID", options);
-    setFormattedDate(today);
-
     // Memuat profil pengguna aktif dari cookie sesi
     getCurrentUser().then((user: UserSession | null) => {
       if (user) {
@@ -155,7 +154,7 @@ export default function Navigation() {
         >
           <span className="material-symbols-outlined text-xl">notifications</span>
           {alerts.totalAlerts > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-error text-on-error text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-surface animate-pulse">
+            <span className="absolute top-1 right-1 w-4 h-4 bg-error text-on-error text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-surface">
               {alerts.totalAlerts}
             </span>
           )}
@@ -164,7 +163,7 @@ export default function Navigation() {
         {/* Popover Dropdown Notifikasi */}
         {isNotificationOpen && (
           <div
-            className={`absolute ${popoverPositionClass} bg-surface-container-lowest/95 backdrop-blur-xl border border-outline-variant/30 rounded-2xl shadow-xl z-50 p-4 animate-slide-up text-on-surface`}
+            className={`absolute ${popoverPositionClass} bg-white border border-outline-variant/40 rounded-2xl shadow-xl z-50 p-4 text-on-surface`}
           >
             {/* Header Popover */}
             <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-3">
@@ -277,7 +276,7 @@ export default function Navigation() {
   return (
     <>
       {/* TopAppBar (Mobile & Tablet) */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-md py-sm bg-surface/80 backdrop-blur-md shadow-sm transition-colors duration-200 md:hidden">
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-md py-sm bg-[#F8FAFC]/98 border-b border-outline-variant/20 shadow-sm transition-colors duration-200 md:hidden">
         <div className="flex items-center gap-sm">
           <div>
             <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight">
@@ -403,7 +402,7 @@ export default function Navigation() {
       </aside>
 
       {/* BottomNavBar (Mobile) */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-1 sm:px-3 pb-safe pt-1.5 bg-surface/90 backdrop-blur-xl shadow-[0px_-4px_20px_rgba(15,23,42,0.05)] rounded-t-xl md:hidden">
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-1 sm:px-3 pb-safe pt-1.5 bg-[#F8FAFC]/98 border-t border-outline-variant/20 shadow-[0px_-4px_20px_rgba(15,23,42,0.05)] rounded-t-xl md:hidden">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (

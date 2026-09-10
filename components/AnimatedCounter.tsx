@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface AnimatedCounterProps {
   target: number;
@@ -10,38 +10,58 @@ interface AnimatedCounterProps {
 }
 
 // helper --------------------------------------------------------------------------
-// function AnimatedCounter untuk animasi angka bertambah secara halus
+// function AnimatedCounter untuk animasi angka bertambah secara efisien tanpa re-render React
 // input param : target (number), duration (number optional), formatCurrency (boolean optional)
 // output : React component JSX yang menampilkan angka ter-animasi
 // end of helper ------------------------------------------------------------------
 export default function AnimatedCounter({
   target,
-  duration = 1200,
+  duration = 400,
   formatCurrency = false,
   className = "",
 }: AnimatedCounterProps) {
-  const [count, setCount] = useState(0);
+  const spanRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
+    const el = spanRef.current;
+    if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.textContent = formatCurrency ? target.toLocaleString("id-ID") : target.toString();
+      return;
+    }
+
     let startTimestamp: number | null = null;
+    let animationFrameId: number;
+
     const step = (timestamp: number) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(easeOut * target));
+      const currentCount = Math.floor(easeOut * target);
+
+      el.textContent = formatCurrency
+        ? currentCount.toLocaleString("id-ID")
+        : currentCount.toString();
 
       if (progress < 1) {
-        window.requestAnimationFrame(step);
+        animationFrameId = window.requestAnimationFrame(step);
       } else {
-        setCount(target);
+        el.textContent = formatCurrency
+          ? target.toLocaleString("id-ID")
+          : target.toString();
       }
     };
-    window.requestAnimationFrame(step);
-  }, [target, duration]);
 
-  const formatted = formatCurrency
-    ? count.toLocaleString("id-ID")
-    : count.toString();
+    animationFrameId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(animationFrameId);
+  }, [target, duration, formatCurrency]);
 
-  return <span className={className}>{formatted}</span>;
+  const initialText = formatCurrency ? target.toLocaleString("id-ID") : target.toString();
+
+  return (
+    <span ref={spanRef} className={className}>
+      {initialText}
+    </span>
+  );
 }

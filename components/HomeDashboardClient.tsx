@@ -79,7 +79,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] flex flex-col justify-between micro-glow-amber transition-all duration-300 hover:scale-[1.02] animate-slide-up stagger-3">
             <div className="flex justify-between items-start mb-2">
               <div className="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center">
-                <span className="material-symbols-outlined text-brand-amber animate-pulse-slow" data-icon="key">
+                <span className="material-symbols-outlined text-brand-amber" data-icon="key">
                   key
                 </span>
               </div>
@@ -96,7 +96,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] flex flex-col justify-between micro-glow-red transition-all duration-300 hover:scale-[1.02] animate-slide-up stagger-4">
             <div className="flex justify-between items-start mb-2">
               <div className="w-10 h-10 rounded-full bg-error-container flex items-center justify-center">
-                <span className="material-symbols-outlined text-error animate-pulse-slow" data-icon="build">
+                <span className="material-symbols-outlined text-error" data-icon="build">
                   build
                 </span>
               </div>
@@ -124,7 +124,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-tertiary-fixed rounded-full text-brand-amber">
-                      <span className="material-symbols-outlined animate-pulse-slow" data-icon="payments">
+                      <span className="material-symbols-outlined" data-icon="payments">
                         payments
                       </span>
                     </div>
@@ -166,7 +166,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
               <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-error animate-slide-up stagger-4 micro-glow-red transition-all duration-300 hover:-translate-y-1">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-error-container rounded-full text-error">
-                    <span className="material-symbols-outlined animate-pulse-slow" data-icon="water_drop">
+                    <span className="material-symbols-outlined" data-icon="water_drop">
                       water_drop
                     </span>
                   </div>

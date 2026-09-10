@@ -60,12 +60,12 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-surface-bright px-4 py-8 relative overflow-hidden">
-      {/* Background Decorative Blur Orbs */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-secondary-container/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-primary-fixed/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Background Subtle Accent */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 bg-secondary-container/10 rounded-full pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-primary-fixed/10 rounded-full pointer-events-none" />
 
       {/* Main Login Card Container */}
-      <div className="w-full max-w-[28rem] bg-surface/90 backdrop-blur-xl border border-outline-variant/30 rounded-2xl shadow-xl p-6 sm:p-8 relative z-10 animate-slide-up">
+      <div className="w-full max-w-[28rem] bg-white border border-outline-variant/30 rounded-2xl shadow-xl p-6 sm:p-8 relative z-10 animate-slide-up">
         {/* Header Logo & Title */}
         <div className="flex flex-col items-center text-center mb-8">
           <div className="w-14 h-14 bg-secondary rounded-2xl flex items-center justify-center shadow-soft-teal mb-3">

@@ -251,7 +251,7 @@ export default function LaporanPage() {
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
             onClick={() => setIsModalOpen(false)}
-            className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 transition-opacity"
           ></div>
           <div className="relative w-full md:w-[500px] bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] pb-safe animate-slide-up overflow-hidden z-10">
             <div className="w-full flex justify-center pt-4 pb-2 shrink-0 md:hidden">

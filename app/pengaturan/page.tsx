@@ -309,7 +309,7 @@ export default function PengaturanPage() {
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
             onClick={() => setActiveSheet(null)}
-            className="fixed inset-0 bg-primary-container/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 transition-opacity"
           ></div>
           <div className="relative w-full md:w-[500px] bg-surface-container-lowest z-10 rounded-t-3xl md:rounded-3xl shadow-2xl pt-2 pb-safe max-h-[85vh] overflow-y-auto hide-scrollbar animate-slide-up">
             <div
@@ -418,7 +418,7 @@ export default function PengaturanPage() {
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
             onClick={() => setActiveSheet(null)}
-            className="fixed inset-0 bg-primary-container/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 transition-opacity"
           ></div>
           <div className="relative w-full md:w-[500px] bg-surface-container-lowest z-10 rounded-t-3xl md:rounded-3xl shadow-2xl pt-2 pb-safe max-h-[85vh] overflow-y-auto hide-scrollbar animate-slide-up">
             <div

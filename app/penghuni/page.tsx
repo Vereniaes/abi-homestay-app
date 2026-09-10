@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { getTenants, addTenant, deleteTenant } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
-import ImportExportModal from "@/components/penghuni/ImportExportModal";
+import dynamic from "next/dynamic";
+
+const ImportExportModal = dynamic(
+  () => import("@/components/penghuni/ImportExportModal"),
+  { ssr: false }
+);
 
 interface Room {
   id: string;
@@ -47,6 +52,8 @@ export default function PenghuniPage() {
   const [newDateIn, setNewDateIn] = useState(() => new Date().toISOString().split("T")[0]);
   const [newRentType, setNewRentType] = useState("MONTHLY");
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
   const calculatedDueDatePreview = useMemo(() => {
     if (!newDateIn) return null;
     const d = new Date(newDateIn);
@@ -55,11 +62,18 @@ export default function PenghuniPage() {
   }, [newDateIn, newRentType]);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
     fetchTenants();
-  }, [search, filter]);
+  }, [debouncedSearch, filter]);
 
   const fetchTenants = async () => {
-    const data = await getTenants(search, filter);
+    const data = await getTenants(debouncedSearch, filter);
     setTenants(data as unknown as Tenant[]);
   };
 
@@ -250,7 +264,7 @@ export default function PenghuniPage() {
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
             onClick={() => setSelectedTenant(null)}
-            className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 transition-opacity"
           ></div>
           <div className="relative w-full md:w-[500px] bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto hide-scrollbar pb-safe z-10 animate-slide-up">
             <div
@@ -343,7 +357,7 @@ export default function PenghuniPage() {
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
             onClick={() => setIsAddOpen(false)}
-            className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 transition-opacity"
           ></div>
           <div className="relative w-full md:w-[500px] bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto hide-scrollbar pb-safe z-10 animate-slide-up">
             <div

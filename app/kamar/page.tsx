@@ -206,7 +206,7 @@ function KamarContent() {
       {selectedRoom && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
-            className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 transition-opacity"
             onClick={closeModal}
           ></div>
 

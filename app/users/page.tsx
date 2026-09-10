@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useMemo } from "react";
 import { getUsers, createUser, updateUser, deleteUser, getCurrentUser } from "../actions";
 
 interface User {
@@ -110,10 +110,12 @@ export default function UsersPage() {
     }
   };
 
-  const filteredUsers = users.filter((u) => 
-    u.name.toLowerCase().includes(search.toLowerCase()) || 
-    u.username.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => 
+      u.name.toLowerCase().includes(search.toLowerCase()) || 
+      u.username.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [users, search]);
 
   // helper --------------------------------------------------------------------------
   // function untuk mendapatkan style badge warna berdasarkan role pengguna
@@ -263,7 +265,7 @@ export default function UsersPage() {
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
             onClick={() => setIsModalOpen(false)}
-            className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 transition-opacity"
           ></div>
           <div className="relative w-full md:w-[500px] bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto hide-scrollbar pb-safe z-10 animate-slide-up">
             <div

@@ -9,31 +9,36 @@ import { sanitizePhoneDigits, formatPhoneDisplay } from "@/lib/phone";
 import { calculateDueDate, getRentAmount } from "@/lib/rent";
 
 // helper --------------------------------------------------------------------------
-// function untuk mengambil statistik dashboard beranda dengan try-catch fallback
+// function untuk mengambil statistik dashboard beranda dengan eksekusi kueri paralel
 // input param : none
 // output : object { totalRooms, occupiedCount, availableCount, maintenanceCount, occupancyRate, dueTenants, maintenanceRoomsList }
 // end of helper ------------------------------------------------------------------
 export async function getDashboardStats() {
   try {
-    const totalRooms = await prisma.room.count();
-    const occupiedCount = await prisma.room.count({ where: { status: "OCCUPIED" } });
-    const availableCount = await prisma.room.count({ where: { status: "AVAILABLE" } });
-    const maintenanceCount = await prisma.room.count({ where: { status: "MAINTENANCE" } });
+    const [
+      totalRooms,
+      occupiedCount,
+      availableCount,
+      maintenanceCount,
+      dueTenants,
+      maintenanceRoomsList,
+    ] = await Promise.all([
+      prisma.room.count(),
+      prisma.room.count({ where: { status: "OCCUPIED" } }),
+      prisma.room.count({ where: { status: "AVAILABLE" } }),
+      prisma.room.count({ where: { status: "MAINTENANCE" } }),
+      prisma.tenant.findMany({
+        where: { status: "EXPIRING_SOON" },
+        include: { room: true },
+        take: 5,
+      }),
+      prisma.room.findMany({
+        where: { status: "MAINTENANCE" },
+        take: 5,
+      }),
+    ]);
 
     const occupancyRate = totalRooms > 0 ? Math.round((occupiedCount / totalRooms) * 100) : 0;
-
-    const dueTenants = await prisma.tenant.findMany({
-      where: {
-        status: "EXPIRING_SOON",
-      },
-      include: { room: true },
-      take: 5,
-    });
-
-    const maintenanceRoomsList = await prisma.room.findMany({
-      where: { status: "MAINTENANCE" },
-      take: 5,
-    });
 
     return {
       totalRooms: totalRooms || 58,
@@ -59,22 +64,23 @@ export async function getDashboardStats() {
 }
 
 // helper --------------------------------------------------------------------------
-// function untuk mengambil daftar notifikasi aktif (penghuni jatuh tempo & kamar perbaikan)
+// function untuk mengambil daftar notifikasi aktif secara paralel
 // input param : none
 // output : object { dueTenants: Array, maintenanceRooms: Array, totalAlerts: number }
 // end of helper ------------------------------------------------------------------
 export async function getNotificationAlerts() {
   try {
-    const dueTenants = await prisma.tenant.findMany({
-      where: { status: "EXPIRING_SOON" },
-      include: { room: true },
-      take: 10,
-    });
-
-    const maintenanceRooms = await prisma.room.findMany({
-      where: { status: "MAINTENANCE" },
-      take: 10,
-    });
+    const [dueTenants, maintenanceRooms] = await Promise.all([
+      prisma.tenant.findMany({
+        where: { status: "EXPIRING_SOON" },
+        include: { room: true },
+        take: 10,
+      }),
+      prisma.room.findMany({
+        where: { status: "MAINTENANCE" },
+        take: 10,
+      }),
+    ]);
 
     return {
       dueTenants,

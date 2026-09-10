@@ -107,7 +107,7 @@ export default function ImportExportModal({ isOpen, onClose, tenants, onSuccess 
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
       ></div>
 
       {/* Modal Card */}
