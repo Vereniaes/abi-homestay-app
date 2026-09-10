@@ -27,7 +27,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={plusJakartaSans.variable}>
-      <head />
+      <head>
+        <link
+          rel="preload"
+          href="/fonts/material-symbols-outlined.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="bg-background text-on-background min-h-screen pb-24 md:pb-0 font-sans">
         <AppLayoutWrapper>{children}</AppLayoutWrapper>
       </body>
