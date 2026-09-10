@@ -648,6 +648,92 @@ export async function addTransaction(formData: FormData) {
 }
 
 // helper --------------------------------------------------------------------------
+// function untuk memperbarui catatan transaksi keuangan
+// input param : formData (FormData)
+// output : object { success: boolean, transaction?: any, message?: string }
+// end of helper ------------------------------------------------------------------
+export async function updateTransaction(formData: FormData) {
+  try {
+    const user = await getCurrentUser();
+    if (user && user.role === "VIEW") {
+      console.warn("Akses ditolak: User dengan role VIEW tidak memiliki akses edit transaksi.");
+      return { success: false, message: "Akses ditolak: Role VIEW tidak memiliki izin edit." };
+    }
+
+    const id = formData.get("id") as string;
+    if (!id) {
+      return { success: false, message: "ID transaksi tidak ditemukan." };
+    }
+
+    const existingTx = await prisma.transaction.findUnique({
+      where: { id },
+    });
+
+    if (!existingTx) {
+      return { success: false, message: "Data transaksi tidak ditemukan." };
+    }
+
+    const amountRaw = (formData.get("amount") as string) || "";
+    const amountCleaned = amountRaw.replace(/[^0-9]/g, "");
+    const amount = amountCleaned ? parseFloat(amountCleaned) : existingTx.amount;
+
+    const rawRentType = formData.get("rentType") as string;
+    const description = (formData.get("description") as string) || existingTx.description;
+    const paymentMethod = (formData.get("paymentMethod") as string) || existingTx.paymentMethod;
+    const dateRaw = formData.get("date") as string;
+    const removeProof = formData.get("removeProof") === "true";
+
+    const date = dateRaw ? new Date(dateRaw) : existingTx.date;
+    const rentType = existingTx.type === "INCOME" && rawRentType ? (rawRentType as any) : existingTx.rentType;
+
+    let proofUrl = existingTx.proofUrl;
+
+    if (removeProof) {
+      proofUrl = null;
+    }
+
+    const file = formData.get("file") as File | null;
+    if (file && file.size > 0) {
+      if (file.size > 2 * 1024 * 1024) {
+        console.warn("Ukuran berkas melebihi batas 2MB.");
+      } else {
+        try {
+          const blob = await put(`receipts/${Date.now()}-${file.name}`, file, {
+            access: "public",
+          });
+          proofUrl = blob.url;
+        } catch (blobErr) {
+          console.warn("Peringatan upload Vercel Blob:", blobErr);
+        }
+      }
+    }
+
+    const updated = await prisma.transaction.update({
+      where: { id },
+      data: {
+        amount,
+        description,
+        rentType,
+        paymentMethod: paymentMethod as any,
+        date,
+        proofUrl,
+      },
+      include: {
+        tenant: true,
+        room: true,
+      },
+    });
+
+    revalidatePath("/laporan");
+    revalidatePath("/");
+    return { success: true, transaction: updated };
+  } catch (error: any) {
+    console.error("Error in updateTransaction:", error);
+    return { success: false, message: error?.message || "Gagal memperbarui transaksi." };
+  }
+}
+
+// helper --------------------------------------------------------------------------
 // function untuk mengambil master harga dan pengaturan sistem
 // input param : none
 // output : object { pricing, setting }
