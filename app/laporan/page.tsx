@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { getTransactions, getTenants, addTransaction } from "../actions";
 import AnimatedCounter from "@/components/AnimatedCounter";
-import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
+import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
 
 interface Tenant {
   id: string;
@@ -116,6 +116,8 @@ export default function LaporanPage() {
       setExpenseDescription("");
       setSelectedFile(null);
       setSelectedTenantId("");
+      // Invalidasi cache agar data baru langsung terlihat
+      clearClientCache("transactions");
       await fetchData();
     });
   };

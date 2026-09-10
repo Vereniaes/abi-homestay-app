@@ -141,7 +141,6 @@ export async function updateRoomInventory(
       },
     });
     revalidatePath("/kamar");
-    revalidatePath("/");
     return updated;
   } catch (error) {
     console.error("Error in updateRoomInventory:", error);
@@ -266,8 +265,6 @@ export async function addTenant(formData: FormData) {
     });
 
     revalidatePath("/penghuni");
-    revalidatePath("/kamar");
-    revalidatePath("/");
     return newTenant;
   } catch (error) {
     console.error("Error in addTenant:", error);
@@ -355,38 +352,41 @@ export async function importTenantsBulk(tenantsData: any[]) {
       });
     }
 
-    // 6. Eksekusi upsert seluruh data penghuni secara aman
-    for (const item of uniqueTenants) {
-      const roomId = roomMap.get(item.roomNumber);
-      if (!roomId) continue;
-
-      await prisma.tenant.upsert({
-        where: { roomId },
-        create: {
-          name: item.name,
-          phone: item.phone,
-          roomId,
-          status: "ACTIVE",
-          dateIn: item.dateIn,
-          dateDue: item.dateDue,
-          rentType: item.rentType as any,
-          rentAmount: item.rentAmount,
-        },
-        update: {
-          name: item.name,
-          phone: item.phone,
-          status: "ACTIVE",
-          dateIn: item.dateIn,
-          dateDue: item.dateDue,
-          rentType: item.rentType as any,
-          rentAmount: item.rentAmount,
-        },
-      });
+    // 6. Eksekusi upsert seluruh data penghuni secara paralel (batch 10)
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < uniqueTenants.length; i += BATCH_SIZE) {
+      const batch = uniqueTenants.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map((item) => {
+          const roomId = roomMap.get(item.roomNumber);
+          if (!roomId) return Promise.resolve();
+          return prisma.tenant.upsert({
+            where: { roomId },
+            create: {
+              name: item.name,
+              phone: item.phone,
+              roomId,
+              status: "ACTIVE",
+              dateIn: item.dateIn,
+              dateDue: item.dateDue,
+              rentType: item.rentType as any,
+              rentAmount: item.rentAmount,
+            },
+            update: {
+              name: item.name,
+              phone: item.phone,
+              status: "ACTIVE",
+              dateIn: item.dateIn,
+              dateDue: item.dateDue,
+              rentType: item.rentType as any,
+              rentAmount: item.rentAmount,
+            },
+          });
+        })
+      );
     }
 
     revalidatePath("/penghuni");
-    revalidatePath("/kamar");
-    revalidatePath("/");
     return { success: true, count: uniqueTenants.length };
   } catch (error: any) {
     console.error("Error in importTenantsBulk:", error);
@@ -427,8 +427,6 @@ export async function deleteTenant(tenantId: string) {
     }
 
     revalidatePath("/penghuni");
-    revalidatePath("/kamar");
-    revalidatePath("/");
     return true;
   } catch (error) {
     console.error("Error in deleteTenant:", error);
@@ -526,7 +524,6 @@ export async function addTransaction(formData: FormData) {
     });
 
     revalidatePath("/laporan");
-    revalidatePath("/");
     return transaction;
   } catch (error) {
     console.error("Error in addTransaction:", error);

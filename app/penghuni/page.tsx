@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getTenants, addTenant, deleteTenant } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
-import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
+import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
 import dynamic from "next/dynamic";
 
 const ImportExportModal = dynamic(
@@ -52,7 +52,7 @@ export default function PenghuniPage() {
   const [newName, setNewName] = useState("");
   const [newRoom, setNewRoom] = useState("");
   const [newPhone, setNewPhone] = useState("");
-  const [newDateIn, setNewDateIn] = useState(() => new Date().toISOString().split("T")[0]);
+  const [newDateIn, setNewDateIn] = useState("");
   const [newRentType, setNewRentType] = useState("MONTHLY");
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -63,6 +63,11 @@ export default function PenghuniPage() {
     if (isNaN(d.getTime())) return null;
     return calculateDueDate(d, newRentType);
   }, [newDateIn, newRentType]);
+
+  useEffect(() => {
+    // Set tanggal awal di sisi klien (PPR membutuhkan nilai stabil saat prerender)
+    setNewDateIn(new Date().toISOString().split("T")[0]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -104,13 +109,16 @@ export default function PenghuniPage() {
     formData.append("rentType", newRentType);
 
     startTransition(async () => {
-      await addTenant(formData);
+      const result = await addTenant(formData);
       setNewName("");
       setNewRoom("");
       setNewPhone("");
       setNewDateIn(new Date().toISOString().split("T")[0]);
       setNewRentType("MONTHLY");
       setIsAddOpen(false);
+      // Invalidasi cache lama agar data baru langsung terlihat
+      clearClientCache("tenants");
+      clearClientCache("rooms");
       await fetchTenants();
     });
   };
@@ -118,8 +126,13 @@ export default function PenghuniPage() {
   const handleDelete = (tenantId: string) => {
     startTransition(async () => {
       await deleteTenant(tenantId);
+      // Optimistic remove - hapus dari state langsung
+      const updated = tenants.filter((t) => t.id !== tenantId);
+      setTenants(updated);
+      setClientCache("tenants", updated);
+      clearClientCache("rooms");
       setSelectedTenant(null);
-      await fetchTenants();
+      fetchTenants();
     });
   };
 

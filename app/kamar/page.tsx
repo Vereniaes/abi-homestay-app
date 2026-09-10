@@ -127,9 +127,20 @@ function KamarContent() {
     }
 
     startTransition(async () => {
-      await updateRoomInventory(selectedRoom.id, inventoryStates, newStatus);
-      await fetchRooms();
+      const result = await updateRoomInventory(selectedRoom.id, inventoryStates, newStatus);
+      if (result) {
+        // Optimistic cache mutation - update UI langsung tanpa tunggu refetch
+        const updatedRooms = rooms.map((r) =>
+          r.id === selectedRoom.id
+            ? { ...r, inventories: inventoryStates, status: newStatus }
+            : r
+        );
+        setRooms(updatedRooms);
+        setClientCache("rooms", updatedRooms);
+      }
       closeModal();
+      // Background refetch untuk sinkronisasi data terbaru
+      fetchRooms();
     });
   };
 
@@ -175,7 +186,11 @@ function KamarContent() {
       {/* Room Grid */}
       <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-sm md:gap-4">
-          {filteredRooms.map((room, idx) => {
+          {rooms.length === 0 && !search
+            ? Array.from({ length: 12 }).map((_, i) => (
+                <div key={`skel-${i}`} className="aspect-square rounded-2xl skeleton-shimmer" />
+              ))
+            : filteredRooms.map((room, idx) => {
             let stateClass = "state-available";
             let iconBg = "bg-[#0D9488]/10 text-[#0D9488]";
             let iconName = "check_circle";

@@ -28,15 +28,7 @@ interface NotificationAlerts {
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const [formattedDate] = useState(() => {
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    };
-    return new Date().toLocaleDateString("id-ID", options);
-  });
+  const [formattedDate, setFormattedDate] = useState("");
   const [currentUser, setCurrentUser] = useState<UserSession | null>(
     () => getClientCache<UserSession>("currentUser")
   );
@@ -54,6 +46,16 @@ export default function Navigation() {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Komputasi tanggal di sisi klien (PPR membutuhkan nilai stabil saat prerender)
+    setFormattedDate(
+      new Date().toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    );
+
     // Memuat profil pengguna jika belum tersimpan di cache
     const cachedUser = getClientCache<UserSession>("currentUser");
     if (!cachedUser) {
