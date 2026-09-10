@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getTenants, addTenant, updateTenant, deleteTenant } from "../actions";
+import { getTenants, addTenant, updateTenant, deleteTenant, getCurrentUser } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
 import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
@@ -48,6 +48,10 @@ export default function PenghuniPage() {
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Role check state
+  const [currentUser, setCurrentUser] = useState<any>(() => getClientCache("currentUser"));
+  const isViewOnly = currentUser?.role === "VIEW";
+
   // Form states
   const [newName, setNewName] = useState("");
   const [newRoom, setNewRoom] = useState("");
@@ -77,6 +81,14 @@ export default function PenghuniPage() {
   useEffect(() => {
     // Set tanggal awal di sisi klien (PPR membutuhkan nilai stabil saat prerender)
     setNewDateIn(new Date().toISOString().split("T")[0]);
+    if (!currentUser) {
+      getCurrentUser().then((user) => {
+        if (user) {
+          setCurrentUser(user);
+          setClientCache("currentUser", user);
+        }
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -222,25 +234,29 @@ export default function PenghuniPage() {
             Pengelolaan Data Penghuni &amp; Masa Sewa
           </p>
         </div>
-        <button
-          onClick={() => setIsImportExportOpen(true)}
-          className="px-4 py-2.5 bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 rounded-xl font-label-md text-sm font-bold flex items-center gap-2 transition-all active:scale-95 border border-brand-teal/20 shadow-sm"
-        >
-          <span className="material-symbols-outlined text-xl">table_chart</span>
-          Export / Import Excel
-        </button>
+        {!isViewOnly && (
+          <button
+            onClick={() => setIsImportExportOpen(true)}
+            className="px-4 py-2.5 bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 rounded-xl font-label-md text-sm font-bold flex items-center gap-2 transition-all active:scale-95 border border-brand-teal/20 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-xl">table_chart</span>
+            Export / Import Excel
+          </button>
+        )}
       </div>
 
       {/* Mobile Top Action Bar */}
       <div className="md:hidden flex items-center justify-between mb-4">
         <h1 className="font-headline-md text-headline-md text-primary font-bold">Daftar Penghuni</h1>
-        <button
-          onClick={() => setIsImportExportOpen(true)}
-          className="px-3 py-1.5 bg-brand-teal/10 text-brand-teal rounded-lg font-label-sm text-xs font-bold flex items-center gap-1 border border-brand-teal/20"
-        >
-          <span className="material-symbols-outlined text-sm">table_chart</span>
-          Excel
-        </button>
+        {!isViewOnly && (
+          <button
+            onClick={() => setIsImportExportOpen(true)}
+            className="px-3 py-1.5 bg-brand-teal/10 text-brand-teal rounded-lg font-label-sm text-xs font-bold flex items-center gap-1 border border-brand-teal/20"
+          >
+            <span className="material-symbols-outlined text-sm">table_chart</span>
+            Excel
+          </button>
+        )}
       </div>
 
       {/* Header & Search */}
@@ -351,12 +367,14 @@ export default function PenghuniPage() {
       </div>
 
       {/* Floating Action Button */}
-      <button
-        onClick={() => setIsAddOpen(true)}
-        className="fixed bottom-24 right-4 md:right-8 w-14 h-14 bg-secondary text-on-secondary rounded-2xl shadow-[0_8px_24px_rgba(13,148,136,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 animate-slide-up"
-      >
-        <span className="material-symbols-outlined text-[28px]">add</span>
-      </button>
+      {!isViewOnly && (
+        <button
+          onClick={() => setIsAddOpen(true)}
+          className="fixed bottom-24 right-4 md:right-8 w-14 h-14 bg-secondary text-on-secondary rounded-2xl shadow-[0_8px_24px_rgba(13,148,136,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 animate-slide-up"
+        >
+          <span className="material-symbols-outlined text-[28px]">add</span>
+        </button>
+      )}
 
       {/* Profile Details Modal */}
       {selectedTenant && (
@@ -391,14 +409,16 @@ export default function PenghuniPage() {
                 </div>
               </div>
 
-              <a
-                href={getWhatsAppUrl(selectedTenant.phone)}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-4 rounded-xl bg-[#25D366] text-white font-label-md text-label-md flex items-center justify-center gap-2 mb-6 shadow-[0_4px_16px_rgba(37,211,102,0.3)] active:scale-95 transition-transform"
-              >
-                Hubungi via WhatsApp
-              </a>
+              {!isViewOnly && (
+                <a
+                  href={getWhatsAppUrl(selectedTenant.phone)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-4 rounded-xl bg-[#25D366] text-white font-label-md text-label-md flex items-center justify-center gap-2 mb-6 shadow-[0_4px_16px_rgba(37,211,102,0.3)] active:scale-95 transition-transform"
+                >
+                  Hubungi via WhatsApp
+                </a>
+              )}
 
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-surface-container-low rounded-2xl p-4 border border-surface-variant">
@@ -431,22 +451,26 @@ export default function PenghuniPage() {
               </div>
 
               <div className="flex flex-col gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(selectedTenant)}
-                  className="w-full py-3 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-lg">edit_calendar</span>
-                  Edit / Perpanjang Masa Sewa
-                </button>
-                <button
-                  onClick={() => handleDelete(selectedTenant.id)}
-                  disabled={isPending}
-                  className="w-full py-3 rounded-xl bg-error-container/20 border border-error-container text-error font-label-md text-label-md hover:bg-error-container/40 transition-colors flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-lg">person_remove</span>
-                  Hapus Penghuni
-                </button>
+                {!isViewOnly && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(selectedTenant)}
+                      className="w-full py-3 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-lg">edit_calendar</span>
+                      Edit / Perpanjang Masa Sewa
+                    </button>
+                    <button
+                      onClick={() => handleDelete(selectedTenant.id)}
+                      disabled={isPending}
+                      className="w-full py-3 rounded-xl bg-error-container/20 border border-error-container text-error font-label-md text-label-md hover:bg-error-container/40 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-lg">person_remove</span>
+                      Hapus Penghuni
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setSelectedTenant(null)}
                   className="w-full py-3 rounded-xl bg-surface-container text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-colors"

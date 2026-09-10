@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useTransition, useMemo, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { getRooms, updateRoomInventory } from "../actions";
+import { getRooms, updateRoomInventory, getCurrentUser } from "../actions";
 import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
 
 interface Tenant {
@@ -46,10 +46,23 @@ function KamarContent() {
   const roomQuery = searchParams ? searchParams.get("room") : null;
 
   const [rooms, setRooms] = useState<Room[]>(() => getClientCache<Room[]>("rooms") || []);
+  const [currentUser, setCurrentUser] = useState<{ role: string; name?: string } | null>(() => getClientCache("currentUser"));
+  const isViewOnly = currentUser?.role === "VIEW";
   const [search, setSearch] = useState("");
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [inventoryStates, setInventoryStates] = useState<string[]>(["baik", "baik", "baik", "baik", "baik"]);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!currentUser) {
+      getCurrentUser().then((u) => {
+        if (u) {
+          setCurrentUser(u);
+          setClientCache("currentUser", u);
+        }
+      });
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const cached = getClientCache<Room[]>("rooms");
@@ -306,30 +319,42 @@ function KamarContent() {
                           </span>
                           <span className="font-body-md text-body-md">{item.name}</span>
                         </div>
-                        <div className="flex bg-surface-container-low rounded-lg p-1">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleInventory(idx, "baik")}
-                            className={`px-3 py-1 rounded-md text-xs transition-all duration-200 ${
+                        {isViewOnly ? (
+                          <span
+                            className={`px-3 py-1 rounded-md text-xs font-semibold ${
                               state === "baik"
-                                ? "font-semibold bg-white shadow-sm text-secondary"
-                                : "font-medium text-on-surface-variant"
+                                ? "bg-[#0D9488]/10 text-[#0D9488] border border-[#0D9488]/20"
+                                : "bg-[#FEF3C7] text-[#92400E] border border-[#F59E0B]/30"
                             }`}
                           >
-                            Baik
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleInventory(idx, "perbaikan")}
-                            className={`px-3 py-1 rounded-md text-xs transition-all duration-200 ${
-                              state === "perbaikan"
-                                ? "font-semibold bg-[#FEF3C7] text-[#92400E] shadow-sm"
-                                : "font-medium text-on-surface-variant"
-                            }`}
-                          >
-                            Perbaikan
-                          </button>
-                        </div>
+                            {state === "baik" ? "Baik" : "Perbaikan"}
+                          </span>
+                        ) : (
+                          <div className="flex bg-surface-container-low rounded-lg p-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleInventory(idx, "baik")}
+                              className={`px-3 py-1 rounded-md text-xs transition-all duration-200 ${
+                                state === "baik"
+                                  ? "font-semibold bg-white shadow-sm text-secondary"
+                                  : "font-medium text-on-surface-variant"
+                              }`}
+                            >
+                              Baik
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleInventory(idx, "perbaikan")}
+                              className={`px-3 py-1 rounded-md text-xs transition-all duration-200 ${
+                                state === "perbaikan"
+                                  ? "font-semibold bg-[#FEF3C7] text-[#92400E] shadow-sm"
+                                  : "font-medium text-on-surface-variant"
+                              }`}
+                            >
+                              Perbaikan
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -337,15 +362,17 @@ function KamarContent() {
               </div>
             </div>
 
-            <div className="p-md pt-2 shrink-0 border-t border-surface-variant bg-surface">
-              <button
-                onClick={handleSaveChanges}
-                disabled={isPending}
-                className="w-full bg-secondary text-white font-label-md text-label-md py-3.5 rounded-xl hover:bg-on-secondary-container transition-colors shadow-[0_0_15px_rgba(13,148,136,0.15)] flex items-center justify-center gap-2"
-              >
-                {isPending ? "Menyimpan..." : "Simpan Perubahan"}
-              </button>
-            </div>
+            {!isViewOnly && (
+              <div className="p-md pt-2 shrink-0 border-t border-surface-variant bg-surface">
+                <button
+                  onClick={handleSaveChanges}
+                  disabled={isPending}
+                  className="w-full bg-secondary text-white font-label-md text-label-md py-3.5 rounded-xl hover:bg-on-secondary-container transition-colors shadow-[0_0_15px_rgba(13,148,136,0.15)] flex items-center justify-center gap-2"
+                >
+                  {isPending ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
