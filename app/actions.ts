@@ -273,6 +273,122 @@ export async function addTenant(formData: FormData) {
 }
 
 // helper --------------------------------------------------------------------------
+// function untuk memperbarui data penghuni dan memperpanjang tanggal jatuh tempo
+// input param : formData (FormData)
+// output : object { success: boolean, tenant?: any, message?: string }
+// end of helper ------------------------------------------------------------------
+export async function updateTenant(formData: FormData) {
+  try {
+    const user = await getCurrentUser();
+    if (user && user.role === "VIEW") {
+      console.warn("Akses ditolak: User dengan role VIEW tidak memiliki akses edit penghuni.");
+      return { success: false, message: "Akses ditolak: Role VIEW tidak memiliki izin edit." };
+    }
+
+    const id = formData.get("id") as string;
+    if (!id) {
+      return { success: false, message: "ID penghuni tidak ditemukan." };
+    }
+
+    const existingTenant = await prisma.tenant.findUnique({
+      where: { id },
+      include: { room: true },
+    });
+
+    if (!existingTenant) {
+      return { success: false, message: "Data penghuni tidak ditemukan." };
+    }
+
+    const name = (formData.get("name") as string) || existingTenant.name;
+    const phoneRaw = (formData.get("phone") as string) || existingTenant.phone;
+    const phone = phoneRaw !== "-" ? formatPhoneDisplay(phoneRaw) : "-";
+    const roomNumberRaw = formData.get("roomNumber") as string;
+    const rentType = (formData.get("rentType") as string) || existingTenant.rentType;
+    const dateDueRaw = formData.get("dateDue") as string;
+
+    let dateDue = existingTenant.dateDue;
+    if (dateDueRaw) {
+      dateDue = new Date(dateDueRaw);
+    }
+
+    // Tentukan status berdasarkan selisih tanggal jatuh tempo baru terhadap hari ini
+    let status: "ACTIVE" | "EXPIRING_SOON" | "INACTIVE" = existingTenant.status;
+    if (dateDue) {
+      const now = new Date();
+      const diffDays = Math.ceil((dateDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      status = diffDays <= 3 ? "EXPIRING_SOON" : "ACTIVE";
+    }
+
+    const pricing = await prisma.pricing.findFirst();
+    const rentAmount = getRentAmount(rentType, pricing);
+
+    let targetRoomId = existingTenant.roomId;
+
+    // Periksa jika ada perubahan nomor kamar
+    if (roomNumberRaw) {
+      const roomDigits = roomNumberRaw.replace(/[^0-9]/g, "");
+      const roomNumber = roomDigits ? roomDigits.padStart(2, "0") : existingTenant.room?.number || "01";
+
+      if (roomNumber !== existingTenant.room?.number) {
+        let newRoom = await prisma.room.findFirst({
+          where: { number: roomNumber },
+        });
+
+        if (!newRoom) {
+          newRoom = await prisma.room.create({
+            data: { number: roomNumber, status: "OCCUPIED" },
+          });
+        } else {
+          // Cek apakah kamar tujuan sudah dihuni oleh orang lain
+          const occupier = await prisma.tenant.findUnique({
+            where: { roomId: newRoom.id },
+          });
+          if (occupier && occupier.id !== existingTenant.id) {
+            return { success: false, message: `Kamar ${roomNumber} sudah dihuni oleh ${occupier.name}.` };
+          }
+          await prisma.room.update({
+            where: { id: newRoom.id },
+            data: { status: "OCCUPIED" },
+          });
+        }
+
+        // Kembalikan status kamar lama menjadi AVAILABLE
+        if (existingTenant.roomId && existingTenant.roomId !== newRoom.id) {
+          await prisma.room.update({
+            where: { id: existingTenant.roomId },
+            data: { status: "AVAILABLE" },
+          });
+        }
+
+        targetRoomId = newRoom.id;
+      }
+    }
+
+    const updated = await prisma.tenant.update({
+      where: { id },
+      data: {
+        name,
+        phone,
+        roomId: targetRoomId,
+        rentType: rentType as any,
+        rentAmount,
+        dateDue,
+        status,
+      },
+      include: { room: true },
+    });
+
+    revalidatePath("/penghuni");
+    revalidatePath("/kamar");
+    revalidatePath("/");
+    return { success: true, tenant: updated };
+  } catch (error: any) {
+    console.error("Error in updateTenant:", error);
+    return { success: false, message: error?.message || "Gagal memperbarui data penghuni." };
+  }
+}
+
+// helper --------------------------------------------------------------------------
 // function untuk menambah banyak data penghuni sekaligus (bulk import teroptimasi)
 // input param : tenantsData (array of object)
 // output : object { success: boolean, count: number, message?: string }

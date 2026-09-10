@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getTenants, addTenant, deleteTenant } from "../actions";
+import { getTenants, addTenant, updateTenant, deleteTenant } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
 import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
@@ -56,6 +56,16 @@ export default function PenghuniPage() {
   const [newRentType, setNewRentType] = useState("MONTHLY");
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Edit form states
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editId, setEditId] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editRoom, setEditRoom] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRentType, setEditRentType] = useState("MONTHLY");
+  const [editDateDue, setEditDateDue] = useState("");
+  const [editError, setEditError] = useState("");
 
   const calculatedDueDatePreview = useMemo(() => {
     if (!newDateIn) return null;
@@ -133,6 +143,70 @@ export default function PenghuniPage() {
       clearClientCache("rooms");
       setSelectedTenant(null);
       fetchTenants();
+    });
+  };
+
+  // helper --------------------------------------------------------------------------
+  // function untuk membuka modal edit data penghuni dan perpanjangan sewa
+  // input param : tenant (Tenant)
+  // output : void (mengeset nilai form dan membuka modal)
+  // end of helper ------------------------------------------------------------------
+  const handleOpenEdit = (tenant: Tenant) => {
+    setEditId(tenant.id);
+    setEditName(tenant.name);
+    setEditRoom(tenant.room?.number || "");
+    const cleanedPhone = tenant.phone && tenant.phone !== "-" ? tenant.phone.replace(/^\+62\s?/, "").replace(/[^0-9]/g, "") : "";
+    setEditPhone(cleanedPhone);
+    setEditRentType(tenant.rentType || "MONTHLY");
+    setEditDateDue(
+      tenant.dateDue ? new Date(tenant.dateDue).toISOString().split("T")[0] : ""
+    );
+    setEditError("");
+    setIsEditOpen(true);
+  };
+
+  // helper --------------------------------------------------------------------------
+  // function untuk memajukan tanggal jatuh tempo secara instan sebanyak satu siklus sewa
+  // input param : none
+  // output : void (memperbarui nilai editDateDue)
+  // end of helper ------------------------------------------------------------------
+  const handleQuickExtend = () => {
+    const baseDate = editDateDue ? new Date(editDateDue) : new Date();
+    const nextDue = calculateDueDate(baseDate, editRentType);
+    setEditDateDue(nextDue.toISOString().split("T")[0]);
+  };
+
+  // helper --------------------------------------------------------------------------
+  // function untuk menyimpan perubahan data penghuni atau perpanjangan jatuh tempo
+  // input param : e (React.FormEvent)
+  // output : void (memanggil server action updateTenant)
+  // end of helper ------------------------------------------------------------------
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditError("");
+    const formData = new FormData();
+    formData.append("id", editId);
+    formData.append("name", editName);
+    formData.append("roomNumber", editRoom);
+    formData.append("phone", formatPhoneDisplay(editPhone));
+    formData.append("rentType", editRentType);
+    formData.append("dateDue", editDateDue);
+
+    startTransition(async () => {
+      const result = await updateTenant(formData);
+      if (result && result.success) {
+        setIsEditOpen(false);
+        clearClientCache("tenants");
+        clearClientCache("rooms");
+        clearClientCache("alerts");
+        clearClientCache("dashboardStats");
+        if (selectedTenant && selectedTenant.id === editId && result.tenant) {
+          setSelectedTenant(result.tenant as unknown as Tenant);
+        }
+        await fetchTenants();
+      } else {
+        setEditError(result?.message || "Gagal memperbarui data penghuni.");
+      }
     });
   };
 
@@ -358,6 +432,14 @@ export default function PenghuniPage() {
 
               <div className="flex flex-col gap-3 mt-6">
                 <button
+                  type="button"
+                  onClick={() => handleOpenEdit(selectedTenant)}
+                  className="w-full py-3 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-lg">edit_calendar</span>
+                  Edit / Perpanjang Masa Sewa
+                </button>
+                <button
                   onClick={() => handleDelete(selectedTenant.id)}
                   disabled={isPending}
                   className="w-full py-3 rounded-xl bg-error-container/20 border border-error-container text-error font-label-md text-label-md hover:bg-error-container/40 transition-colors flex items-center justify-center gap-2"
@@ -502,6 +584,155 @@ export default function PenghuniPage() {
                   <span className="material-symbols-outlined text-lg">person_add</span>
                   {isPending ? "Menyimpan..." : "Simpan Penghuni"}
                 </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit & Extend Tenant Modal */}
+      {isEditOpen && (
+        <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-4">
+          <div
+            onClick={() => setIsEditOpen(false)}
+            className="fixed inset-0 bg-black/50 transition-opacity"
+          ></div>
+          <div className="relative w-full md:w-[500px] bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto hide-scrollbar pb-safe z-10 animate-slide-up">
+            <div
+              className="w-full flex justify-center pt-4 pb-2 cursor-pointer"
+              onClick={() => setIsEditOpen(false)}
+            >
+              <div className="w-12 h-1.5 bg-outline-variant rounded-full"></div>
+            </div>
+
+            <div className="px-6 pb-8 pt-2">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-headline-md text-headline-md text-primary font-bold">
+                  Edit &amp; Perpanjang Sewa
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-variant/40"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              {editError && (
+                <div className="mb-4 p-3 rounded-xl bg-error-container/60 border border-error/20 text-on-error-container text-label-sm font-medium flex items-center gap-2">
+                  <span className="material-symbols-outlined text-error text-lg">error</span>
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
+                    Nama Penghuni
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
+                      Nomor Kamar
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editRoom}
+                      onChange={(e) => setEditRoom(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
+                      Tipe Sewa
+                    </label>
+                    <select
+                      value={editRentType}
+                      onChange={(e) => setEditRentType(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md"
+                    >
+                      <option value="DAILY">Harian</option>
+                      <option value="WEEKLY">Mingguan</option>
+                      <option value="MONTHLY">Bulanan</option>
+                      <option value="SEMESTERLY">Per Semester</option>
+                      <option value="YEARLY">Tahunan</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
+                    Nomor HP
+                  </label>
+                  <div className="flex items-center w-full rounded-xl bg-surface-container-low border border-surface-variant focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary overflow-hidden transition-all">
+                    <div className="px-3.5 py-3 bg-surface-variant/40 border-r border-surface-variant font-body-md text-primary font-bold select-none flex items-center gap-1.5 shrink-0">
+                      <span className="text-sm">🇮🇩</span>
+                      <span>+62</span>
+                    </div>
+                    <input
+                      type="tel"
+                      required
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(formatLiveInputPhone(e.target.value))}
+                      className="w-full px-4 py-3 bg-transparent outline-none text-body-md font-body-md"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-secondary-container/20 border border-secondary/30 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="font-label-sm text-secondary font-bold flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-lg">event_repeat</span>
+                      Tanggal Jatuh Tempo
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleQuickExtend}
+                      className="px-2.5 py-1 bg-secondary text-on-secondary rounded-lg font-label-sm text-[11px] font-bold hover:bg-secondary/90 transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-xs">add</span>
+                      +1 Periode Sewa
+                    </button>
+                  </div>
+                  <input
+                    type="date"
+                    required
+                    value={editDateDue}
+                    onChange={(e) => setEditDateDue(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-secondary/30 focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md font-semibold text-primary"
+                  />
+                  <p className="text-[11px] text-on-surface-variant mt-2">
+                    Gunakan tombol <strong>+1 Periode Sewa</strong> untuk menambah waktu secara otomatis atau tentukan tanggal secara manual.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditOpen(false)}
+                    className="flex-1 py-3 rounded-xl bg-surface-container text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="flex-1 py-3 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md font-bold hover:bg-secondary/90 shadow-md transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isPending ? "Menyimpan..." : "Simpan Perubahan"}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
