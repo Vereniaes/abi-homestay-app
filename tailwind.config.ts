@@ -111,13 +111,13 @@ const config: Config = {
         "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
       },
       animation: {
-        "slide-up": "slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "slide-up": "slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "bounce-gentle": "bounceGentle 2s infinite",
       },
       keyframes: {
         slideUp: {
-          "0%": { opacity: "0", transform: "translateY(24px)" },
+          "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         bounceGentle: {

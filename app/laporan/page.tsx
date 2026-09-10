@@ -43,16 +43,26 @@ export default function LaporanPage() {
   const [expenseDescription, setExpenseDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const txData = await getTransactions();
-    const tenantData = await getTenants("", "semua");
-    setTransactions(txData as unknown as Transaction[]);
-    setTenants(tenantData as unknown as Tenant[]);
+    setIsLoading(true);
+    try {
+      const [txData, tenantData] = await Promise.all([
+        getTransactions(),
+        getTenants("", "semua"),
+      ]);
+      setTransactions(txData as unknown as Transaction[]);
+      setTenants(tenantData as unknown as Tenant[]);
+    } catch (err) {
+      console.error("Gagal memuat data laporan:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const totalRevenue = useMemo(() => {
@@ -116,9 +126,13 @@ export default function LaporanPage() {
             </p>
             <div className="flex items-baseline gap-2">
               <span className="text-on-primary text-body-lg font-semibold">Rp</span>
-              <h2 className="text-on-primary text-2xl sm:text-3xl md:text-[40px] leading-tight font-bold tracking-tight">
-                <AnimatedCounter target={totalRevenue > 0 ? totalRevenue : 24500000} formatCurrency={true} />
-              </h2>
+              {isLoading ? (
+                <div className="h-10 w-44 rounded-xl skeleton-shimmer my-1 opacity-60"></div>
+              ) : (
+                <h2 className="text-on-primary text-2xl sm:text-3xl md:text-[40px] leading-tight font-bold tracking-tight animate-slide-up">
+                  <AnimatedCounter target={totalRevenue} formatCurrency={true} />
+                </h2>
+              )}
             </div>
             <div className="mt-4 flex items-center gap-2 text-secondary-fixed">
               <span className="material-symbols-outlined text-[18px]">trending_up</span>
@@ -153,7 +167,18 @@ export default function LaporanPage() {
         </div>
 
         <div className="space-y-3">
-          {transactions.map((tx, idx) => {
+          {isLoading ? (
+            <>
+              <div className="h-20 rounded-2xl skeleton-shimmer w-full"></div>
+              <div className="h-20 rounded-2xl skeleton-shimmer w-full"></div>
+              <div className="h-20 rounded-2xl skeleton-shimmer w-full"></div>
+            </>
+          ) : transactions.length === 0 ? (
+            <div className="p-8 text-center bg-surface rounded-2xl border border-surface-variant text-on-surface-variant">
+              <p className="font-medium text-body-md">Belum ada riwayat transaksi</p>
+            </div>
+          ) : (
+            transactions.map((tx, idx) => {
             const isExpanded = expandedId === tx.id;
             const isAboveFold = idx < 6;
             const animDelay = isAboveFold ? `${((idx + 1) * 0.05).toFixed(2)}s` : "0s";
@@ -242,7 +267,8 @@ export default function LaporanPage() {
                 )}
               </div>
             );
-          })}
+          })
+        )}
         </div>
       </section>
 

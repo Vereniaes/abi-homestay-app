@@ -409,7 +409,7 @@ export default function Navigation() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center px-1.5 sm:px-3 py-1 transition-all duration-300 ${
+              className={`flex flex-col items-center justify-center px-1.5 sm:px-3 py-1 transition-colors duration-100 active:scale-95 ${
                 isActive
                   ? "text-secondary bg-secondary-container/30 rounded-xl font-bold"
                   : "text-on-surface-variant hover:text-secondary-fixed-variant"
