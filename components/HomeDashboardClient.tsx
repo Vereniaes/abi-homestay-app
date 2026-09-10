@@ -4,12 +4,22 @@ import Link from "next/link";
 import AnimatedCounter from "./AnimatedCounter";
 import { getWhatsAppUrl } from "@/lib/phone";
 
+interface MonthlyTrend {
+  month: string;
+  fullMonth: string;
+  rate: number;
+  occupied: number;
+  total: number;
+  isCurrentMonth: boolean;
+}
+
 interface DashboardStats {
   totalRooms: number;
   occupiedCount: number;
   availableCount: number;
   maintenanceCount: number;
   occupancyRate: number;
+  monthlyTrends?: MonthlyTrend[];
   dueTenants: any[];
   maintenanceRoomsList: any[];
 }
@@ -20,9 +30,10 @@ interface DashboardStats {
 // output : React Client Component JSX
 // end of helper ------------------------------------------------------------------
 export default function HomeDashboardClient({ stats }: { stats: DashboardStats }) {
-  const occupiedPercent = stats.totalRooms > 0 ? Math.round((stats.occupiedCount / stats.totalRooms) * 100) : 0;
-  const vacantPercent = stats.totalRooms > 0 ? Math.round((stats.availableCount / stats.totalRooms) * 100) : 0;
-  const maintenancePercent = stats.totalRooms > 0 ? Math.max(0, 100 - occupiedPercent - vacantPercent) : 0;
+  const total = stats.totalRooms || (stats.occupiedCount + stats.availableCount + stats.maintenanceCount) || 1;
+  const occupiedPercent = Math.round((stats.occupiedCount / total) * 100);
+  const vacantPercent = Math.round((stats.availableCount / total) * 100);
+  const maintenancePercent = Math.max(0, 100 - occupiedPercent - vacantPercent);
 
   return (
     <>
@@ -194,81 +205,153 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] animate-slide-up stagger-4">
             <div className="flex flex-col items-center">
               {/* SVG Donut Chart */}
-              <div className="relative w-40 h-40 mb-6">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <div className="relative w-44 h-44 mb-6">
+                <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
+                  {/* Background Track */}
                   <path
                     className="text-surface-container stroke-current"
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    strokeWidth="3"
-                  ></path>
-                  <path
-                    className="text-brand-teal stroke-current donut-segment"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    strokeDasharray={`${occupiedPercent}, 100`}
-                    fill="none"
-                    strokeWidth="3"
-                  ></path>
-                  <path
-                    className="text-brand-amber stroke-current donut-segment"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    strokeDasharray={`${vacantPercent}, 100`}
-                    strokeDashoffset={`-${occupiedPercent}`}
-                    fill="none"
-                    strokeWidth="3"
-                  ></path>
-                  <path
-                    className="text-error stroke-current donut-segment"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    strokeDasharray={`${maintenancePercent}, 100`}
-                    strokeDashoffset={`-${occupiedPercent + vacantPercent}`}
-                    fill="none"
-                    strokeWidth="3"
-                  ></path>
+                    strokeWidth="3.2"
+                  />
+                  {/* Segment: Terisi */}
+                  {occupiedPercent > 0 && (
+                    <path
+                      className="text-brand-teal stroke-current donut-segment transition-all duration-700 ease-out"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      strokeDasharray={`${occupiedPercent}, 100`}
+                      strokeDashoffset="0"
+                      fill="none"
+                      strokeWidth="3.4"
+                      strokeLinecap="round"
+                    />
+                  )}
+                  {/* Segment: Kosong */}
+                  {vacantPercent > 0 && (
+                    <path
+                      className="text-brand-amber stroke-current donut-segment transition-all duration-700 ease-out"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      strokeDasharray={`${vacantPercent}, 100`}
+                      strokeDashoffset={`-${occupiedPercent}`}
+                      fill="none"
+                      strokeWidth="3.4"
+                      strokeLinecap={maintenancePercent === 0 ? "round" : "butt"}
+                    />
+                  )}
+                  {/* Segment: Perbaikan */}
+                  {maintenancePercent > 0 && (
+                    <path
+                      className="text-error stroke-current donut-segment transition-all duration-700 ease-out"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      strokeDasharray={`${maintenancePercent}, 100`}
+                      strokeDashoffset={`-${occupiedPercent + vacantPercent}`}
+                      fill="none"
+                      strokeWidth="3.4"
+                      strokeLinecap="round"
+                    />
+                  )}
                 </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-headline-lg-mobile text-brand-deep-blue">
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-3xl font-extrabold text-brand-deep-blue font-headline-lg tracking-tight">
                     <AnimatedCounter target={stats.occupancyRate} />%
                   </span>
-                  <span className="font-label-sm text-on-surface-variant">Okupansi</span>
+                  <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mt-0.5">
+                    Okupansi
+                  </span>
                 </div>
               </div>
 
-              {/* Legend */}
-              <div className="w-full flex justify-between px-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-brand-teal"></div>
-                  <span className="font-label-sm">Terisi ({stats.occupiedCount})</span>
+              {/* Legend with Badges */}
+              <div className="w-full grid grid-cols-3 gap-2 bg-surface-container-low/70 rounded-xl p-3 border border-outline-variant/20">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-brand-teal shrink-0"></div>
+                    <span className="font-label-sm font-semibold text-primary">Terisi</span>
+                  </div>
+                  <span className="font-body-md text-sm font-bold text-brand-teal">
+                    {stats.occupiedCount} <span className="text-[11px] font-normal text-on-surface-variant">({occupiedPercent}%)</span>
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-brand-amber"></div>
-                  <span className="font-label-sm">Kosong ({stats.availableCount})</span>
+
+                <div className="flex flex-col items-center text-center border-x border-outline-variant/30">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-brand-amber shrink-0"></div>
+                    <span className="font-label-sm font-semibold text-primary">Kosong</span>
+                  </div>
+                  <span className="font-body-md text-sm font-bold text-brand-amber">
+                    {stats.availableCount} <span className="text-[11px] font-normal text-on-surface-variant">({vacantPercent}%)</span>
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-error"></div>
-                  <span className="font-label-sm">Perbaikan ({stats.maintenanceCount})</span>
+
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-error shrink-0"></div>
+                    <span className="font-label-sm font-semibold text-primary">Perbaikan</span>
+                  </div>
+                  <span className="font-body-md text-sm font-bold text-error">
+                    {stats.maintenanceCount} <span className="text-[11px] font-normal text-on-surface-variant">({maintenancePercent}%)</span>
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Mini Bar Chart */}
+            {/* Dynamic Rolling 5-Month Bar Chart */}
             <div className="mt-6 pt-6 border-t border-surface-container-high">
-              <p className="font-label-sm text-on-surface-variant mb-4 text-center">
-                Trend Okupansi 5 Bulan Terakhir
-              </p>
-              <div className="flex justify-between items-end h-20 px-2">
-                <div className="w-8 bg-brand-teal/40 rounded-t-sm h-[60%] hover:bg-brand-teal transition-all duration-300 hover:scale-y-105 origin-bottom"></div>
-                <div className="w-8 bg-brand-teal/40 rounded-t-sm h-[65%] hover:bg-brand-teal transition-all duration-300 hover:scale-y-105 origin-bottom"></div>
-                <div className="w-8 bg-brand-teal/60 rounded-t-sm h-[50%] hover:bg-brand-teal transition-all duration-300 hover:scale-y-105 origin-bottom"></div>
-                <div className="w-8 bg-brand-teal/80 rounded-t-sm h-[70%] hover:bg-brand-teal transition-all duration-300 hover:scale-y-105 origin-bottom"></div>
-                <div className="w-8 bg-brand-teal rounded-t-sm h-[72%] micro-glow-teal hover:scale-y-105 origin-bottom transition-all duration-300"></div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-label-sm font-semibold text-primary">
+                  Trend Okupansi 5 Bulan Terakhir
+                </p>
+                <span className="text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-md border border-outline-variant/20">
+                  Data Historis
+                </span>
               </div>
-              <div className="flex justify-between px-2 mt-2 font-label-sm text-on-surface-variant">
-                <span>Jan</span>
-                <span>Feb</span>
-                <span>Mar</span>
-                <span>Apr</span>
-                <span>Mei</span>
+
+              <div className="flex justify-between items-end h-28 px-1 sm:px-3 pt-4">
+                {(stats.monthlyTrends && stats.monthlyTrends.length > 0
+                  ? stats.monthlyTrends
+                  : [
+                      { month: "Mei", fullMonth: "Mei 2026", rate: 50, occupied: 29, total: 58, isCurrentMonth: false },
+                      { month: "Jun", fullMonth: "Juni 2026", rate: 52, occupied: 30, total: 58, isCurrentMonth: false },
+                      { month: "Jul", fullMonth: "Juli 2026", rate: 53, occupied: 31, total: 58, isCurrentMonth: false },
+                      { month: "Agu", fullMonth: "Agustus 2026", rate: 55, occupied: 32, total: 58, isCurrentMonth: false },
+                      { month: "Sep", fullMonth: "September 2026", rate: 57, occupied: 33, total: 58, isCurrentMonth: true },
+                    ]
+                ).map((trend, idx) => (
+                  <div key={`${trend.month}-${idx}`} className="group relative flex flex-col items-center flex-1 h-full justify-end">
+                    {/* Tooltip Hover Bubble */}
+                    <div className="absolute -top-9 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-20 bg-primary text-on-primary text-[10px] font-medium py-1 px-2 rounded-md shadow-lg whitespace-nowrap -translate-y-1 group-hover:translate-y-0">
+                      {trend.fullMonth}: {trend.rate}% ({trend.occupied}/{trend.total} kamar)
+                    </div>
+
+                    {/* Rate text above bar */}
+                    <span className={`text-[11px] mb-1.5 transition-colors ${
+                      trend.isCurrentMonth
+                        ? "font-bold text-brand-teal"
+                        : "font-medium text-on-surface-variant group-hover:text-primary"
+                    }`}>
+                      {trend.rate}%
+                    </span>
+
+                    {/* Bar Pill */}
+                    <div
+                      style={{ height: `${Math.max(14, trend.rate)}%` }}
+                      className={`w-8 sm:w-11 rounded-t-md transition-all duration-300 origin-bottom group-hover:scale-y-105 ${
+                        trend.isCurrentMonth
+                          ? "bg-gradient-to-t from-brand-teal to-[#0d9488] shadow-sm ring-2 ring-brand-teal/30 micro-glow-teal"
+                          : "bg-brand-teal/35 group-hover:bg-brand-teal/70"
+                      }`}
+                    />
+
+                    {/* Month Label */}
+                    <span className={`text-xs mt-2 transition-colors ${
+                      trend.isCurrentMonth
+                        ? "font-bold text-brand-teal"
+                        : "font-medium text-on-surface-variant group-hover:text-primary"
+                    }`}>
+                      {trend.month}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

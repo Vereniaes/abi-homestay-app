@@ -60,8 +60,15 @@ export default function PengaturanPage() {
   const [semesterly, setSemesterly] = useState("14.000.000");
   const [yearly, setYearly] = useState("28.000.000");
 
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   useEffect(() => {
     fetchData();
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("theme");
+      const isDark = savedTheme === "dark" || (!savedTheme && document.documentElement.classList.contains("dark"));
+      setIsDarkMode(isDark);
+    }
   }, []);
 
   const fetchData = async () => {
@@ -94,12 +101,15 @@ export default function PengaturanPage() {
     window.location.href = "/login";
   };
 
-  const handleToggleAutoWhatsapp = (checked: boolean) => {
-    if (!setting) return;
-    setSetting({ ...setting, autoWhatsappReminders: checked });
-    startTransition(async () => {
-      await updateSetting(setting.id, checked);
-    });
+  const handleToggleDarkMode = (checked: boolean) => {
+    setIsDarkMode(checked);
+    if (checked) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
   };
 
   const handleSavePricing = (e: React.FormEvent) => {
@@ -204,20 +214,20 @@ export default function PengaturanPage() {
         {/* Sistem Group */}
         <div className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-sm border border-surface-container-low animate-slide-up stagger-3">
           <h3 className="font-label-md text-label-md text-on-surface-variant mb-3 px-2 uppercase tracking-wider">
-            Sistem &amp; Keamanan
+            Tampilan &amp; Sistem
           </h3>
 
           <div className="w-full flex items-center justify-between p-3 rounded-lg bg-surface-container-lowest">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center text-primary-container">
-                <span className="material-symbols-outlined">notifications_active</span>
+                <span className="material-symbols-outlined">dark_mode</span>
               </div>
               <div className="text-left">
                 <p className="font-body-md text-body-md font-medium text-primary-container">
-                  Auto-WhatsApp Reminders
+                  Mode Gelap
                 </p>
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Tagihan &amp; info otomatis
+                  Tampilan tema gelap aplikasi
                 </p>
               </div>
             </div>
@@ -226,9 +236,9 @@ export default function PengaturanPage() {
             <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
               <input
                 type="checkbox"
-                id="toggle1"
-                checked={setting?.autoWhatsappReminders || false}
-                onChange={(e) => handleToggleAutoWhatsapp(e.target.checked)}
+                id="toggle-dark-mode"
+                checked={isDarkMode}
+                onChange={(e) => handleToggleDarkMode(e.target.checked)}
                 className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-1 left-1 checked:left-auto checked:right-1"
                 style={{
                   borderColor: "#f2f4f6",
@@ -236,32 +246,11 @@ export default function PengaturanPage() {
                 }}
               />
               <label
-                htmlFor="toggle1"
+                htmlFor="toggle-dark-mode"
                 className="toggle-label block overflow-hidden h-8 rounded-full bg-surface-container-low cursor-pointer"
               ></label>
             </div>
           </div>
-
-          <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
-
-          <button className="menu-item w-full flex items-center justify-between p-3 rounded-lg hover:premium-glow group bg-surface-container-lowest">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center text-primary-container group-hover:bg-secondary/10 group-hover:text-secondary transition-colors">
-                <span className="material-symbols-outlined">shield</span>
-              </div>
-              <div className="text-left">
-                <p className="font-body-md text-body-md font-medium text-primary-container group-hover:text-secondary transition-colors">
-                  Keamanan Akun
-                </p>
-                <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Password &amp; Akses staf
-                </p>
-              </div>
-            </div>
-            <span className="material-symbols-outlined text-outline-variant group-hover:text-secondary transition-colors">
-              chevron_right
-            </span>
-          </button>
 
           <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
 

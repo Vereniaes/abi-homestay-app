@@ -687,123 +687,133 @@ export default function LaporanPage() {
 
       {/* Modal Pratinjau Struk Pembayaran */}
       {previewReceiptTx && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-4">
           <div
             onClick={() => setPreviewReceiptTx(null)}
-            className="fixed inset-0 bg-black/60 transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
           ></div>
-          <div className="relative w-full max-w-lg bg-surface rounded-3xl shadow-2xl p-6 z-10 animate-slide-up max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-outline-variant/30 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
-                  <span className="material-symbols-outlined text-xl">receipt_long</span>
+
+          <div className="relative w-full md:w-[520px] bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] pb-safe animate-slide-up overflow-hidden z-10">
+            {/* Mobile Sheet Handle Bar */}
+            <div className="w-full flex justify-center pt-3 pb-1 shrink-0 md:hidden">
+              <div className="w-12 h-1.5 rounded-full bg-outline-variant/50"></div>
+            </div>
+
+            {/* Sticky Header */}
+            <div className="px-5 py-4 flex items-center justify-between border-b border-outline-variant/30 shrink-0 bg-surface">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-2xl">receipt_long</span>
                 </div>
                 <div>
-                  <h3 className="font-headline-md text-body-lg text-primary font-bold">
+                  <h3 className="font-headline-md text-headline-sm text-primary font-bold">
                     Struk Pembayaran
                   </h3>
-                  <p className="text-label-sm text-outline">{previewReceiptTx.refId}</p>
+                  <p className="text-label-sm text-outline font-mono">{previewReceiptTx.refId}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setPreviewReceiptTx(null)}
-                className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-variant/40 transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-outline hover:text-on-surface hover:bg-surface-variant/50 transition-colors"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            {previewReceiptTx.proofUrl ? (
-              <div className="space-y-4">
-                <div className="relative w-full rounded-2xl overflow-hidden border border-outline-variant/40 bg-black/5 flex items-center justify-center max-h-[55vh]">
-                  <img
-                    src={previewReceiptTx.proofUrl}
-                    alt="Bukti Transfer Pembayaran"
-                    className="max-h-[55vh] w-auto object-contain rounded-xl"
-                  />
+            {/* Scrollable Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {previewReceiptTx.proofUrl ? (
+                <div className="space-y-4">
+                  <div className="relative w-full rounded-2xl overflow-hidden border border-outline-variant/40 bg-black/5 flex items-center justify-center min-h-[220px] max-h-[50vh]">
+                    <img
+                      src={previewReceiptTx.proofUrl}
+                      alt="Bukti Transfer Pembayaran"
+                      className="max-h-[50vh] w-auto max-w-full object-contain rounded-xl"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <a
+                      href={previewReceiptTx.proofUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-3 px-4 rounded-xl bg-secondary text-on-secondary font-label-md font-bold text-center flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-lg">open_in_new</span>
+                      Buka Gambar Penuh
+                    </a>
+                    <a
+                      href={previewReceiptTx.proofUrl}
+                      download={`struk-${previewReceiptTx.refId}.jpg`}
+                      className="py-3 px-4 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md font-bold flex items-center justify-center gap-1.5 border border-outline-variant/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-lg">download</span>
+                      Unduh
+                    </a>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <a
-                    href={previewReceiptTx.proofUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 py-3 px-4 rounded-xl bg-secondary text-on-secondary font-label-md font-bold text-center flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-lg">open_in_new</span>
-                    Buka Gambar Penuh
-                  </a>
-                  <a
-                    href={previewReceiptTx.proofUrl}
-                    download={`struk-${previewReceiptTx.refId}.jpg`}
-                    className="py-3 px-4 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md font-bold flex items-center justify-center gap-1.5 border border-outline-variant/40 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-lg">download</span>
-                    Unduh
-                  </a>
-                </div>
-              </div>
-            ) : (
-              /* Nota Struk Digital Resmi jika tanpa upload foto */
-              <div className="p-6 bg-surface-container-lowest border-2 border-dashed border-outline-variant/50 rounded-2xl space-y-4">
-                <div className="text-center pb-3 border-b border-dashed border-outline-variant/50">
-                  <h4 className="font-headline-md text-primary font-extrabold tracking-wide uppercase">
-                    Abi Homestay
-                  </h4>
-                  <p className="text-label-sm text-outline">Tanda Terima Pembayaran Resmi</p>
-                  <span className="inline-block mt-2 px-3 py-0.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] text-xs font-extrabold tracking-wider uppercase border border-[#2E7D32]/20">
-                    Lunas
-                  </span>
-                </div>
+              ) : (
+                /* Nota Struk Digital Resmi jika tanpa upload foto */
+                <div className="p-6 bg-surface-container-lowest border-2 border-dashed border-outline-variant/50 rounded-2xl space-y-4">
+                  <div className="text-center pb-3 border-b border-dashed border-outline-variant/50">
+                    <h4 className="font-headline-md text-primary font-extrabold tracking-wide uppercase">
+                      Abi Homestay
+                    </h4>
+                    <p className="text-label-sm text-outline">Tanda Terima Pembayaran Resmi</p>
+                    <span className="inline-block mt-2 px-3 py-0.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] text-xs font-extrabold tracking-wider uppercase border border-[#2E7D32]/20">
+                      Lunas
+                    </span>
+                  </div>
 
-                <div className="space-y-2 text-body-md">
-                  <div className="flex justify-between">
-                    <span className="text-outline">No. Referensi:</span>
-                    <span className="font-bold text-on-surface">{previewReceiptTx.refId}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-outline">Tanggal:</span>
-                    <span className="font-semibold text-on-surface">
-                      {new Date(previewReceiptTx.date).toLocaleDateString("id-ID", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-outline">Penerima / Penghuni:</span>
-                    <span className="font-bold text-primary">
-                      {previewReceiptTx.tenant ? previewReceiptTx.tenant.name : "Umum / Operasional"}
-                    </span>
-                  </div>
-                  {previewReceiptTx.room && (
-                    <div className="flex justify-between">
-                      <span className="text-outline">Nomor Kamar:</span>
-                      <span className="font-bold text-on-surface">Kamar {previewReceiptTx.room.number}</span>
+                  <div className="space-y-2.5 text-body-md">
+                    <div className="flex justify-between items-center">
+                      <span className="text-outline">No. Referensi:</span>
+                      <span className="font-bold text-on-surface font-mono">{previewReceiptTx.refId}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-outline">Rincian:</span>
-                    <span className="font-semibold text-on-surface">
-                      {previewReceiptTx.type === "EXPENSE" ? previewReceiptTx.description : previewReceiptTx.rentType || "Sewa Kost"}
+                    <div className="flex justify-between items-center">
+                      <span className="text-outline">Tanggal:</span>
+                      <span className="font-semibold text-on-surface">
+                        {new Date(previewReceiptTx.date).toLocaleDateString("id-ID", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-outline">Penerima / Penghuni:</span>
+                      <span className="font-bold text-primary">
+                        {previewReceiptTx.tenant ? previewReceiptTx.tenant.name : "Umum / Operasional"}
+                      </span>
+                    </div>
+                    {previewReceiptTx.room && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-outline">Nomor Kamar:</span>
+                        <span className="font-bold text-on-surface">Kamar {previewReceiptTx.room.number}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-outline">Rincian:</span>
+                      <span className="font-semibold text-on-surface">
+                        {previewReceiptTx.type === "EXPENSE" ? previewReceiptTx.description : previewReceiptTx.rentType || "Sewa Kost"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-outline">Metode:</span>
+                      <span className="font-semibold text-on-surface">{previewReceiptTx.paymentMethod}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-dashed border-outline-variant/50 flex justify-between items-center">
+                    <span className="font-bold text-body-lg text-on-surface">Total Dibayar:</span>
+                    <span className="font-headline-lg text-headline-md text-secondary font-extrabold">
+                      Rp {previewReceiptTx.amount.toLocaleString("id-ID")}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-outline">Metode:</span>
-                    <span className="font-semibold text-on-surface">{previewReceiptTx.paymentMethod}</span>
-                  </div>
                 </div>
-
-                <div className="pt-3 border-t-2 border-dashed border-outline-variant/50 flex justify-between items-center">
-                  <span className="font-bold text-body-lg text-on-surface">Total Dibayar:</span>
-                  <span className="font-headline-lg text-headline-md text-secondary font-extrabold">
-                    Rp {previewReceiptTx.amount.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
