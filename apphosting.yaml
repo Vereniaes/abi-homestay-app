@@ -1,0 +1,26 @@
+# Firebase App Hosting configuration
+# https://firebase.google.com/docs/app-hosting/configure
+
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024
+
+env:
+  - variable: MONGODB_URI
+    secret: MONGODB_URI
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: BLOB_READ_WRITE_TOKEN
+    secret: BLOB_READ_WRITE_TOKEN
+    availability:
+      - BUILD
+      - RUNTIME
