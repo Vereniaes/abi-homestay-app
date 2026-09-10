@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { getTransactions, getTenants, addTransaction } from "../actions";
 import AnimatedCounter from "@/components/AnimatedCounter";
+import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
 
 interface Tenant {
   id: string;
@@ -25,13 +26,17 @@ interface Transaction {
 }
 
 // helper --------------------------------------------------------------------------
-// function Halaman Laporan Keuangan & Tagihan
+// function Halaman Laporan Keuangan & Tagihan dengan SWR Client Caching
 // input param : none
 // output : React Client Component JSX
 // end of helper ------------------------------------------------------------------
 export default function LaporanPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const cachedTx = getClientCache<Transaction[]>("transactions");
+  const cachedTenants = getClientCache<Tenant[]>("tenants");
+  const hasValidCache = Boolean(cachedTx && cachedTx.length > 0);
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => cachedTx || []);
+  const [tenants, setTenants] = useState<Tenant[]>(() => cachedTenants || []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -43,21 +48,34 @@ export default function LaporanPage() {
   const [expenseDescription, setExpenseDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !hasValidCache);
 
   useEffect(() => {
+    const cached = getClientCache<Transaction[]>("transactions");
+    if (cached && cached.length > 0) {
+      setTransactions(cached);
+      setIsLoading(false);
+      // Revalidasi senyap di latar belakang hanya jika cache sudah basi (> 30 detik)
+      if (!isCacheStale("transactions", 30000)) return;
+    }
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    setIsLoading(true);
+    if (!getClientCache("transactions")) {
+      setIsLoading(true);
+    }
     try {
       const [txData, tenantData] = await Promise.all([
         getTransactions(),
         getTenants("", "semua"),
       ]);
-      setTransactions(txData as unknown as Transaction[]);
-      setTenants(tenantData as unknown as Tenant[]);
+      const safeTx = txData as unknown as Transaction[];
+      const safeTenants = tenantData as unknown as Tenant[];
+      setTransactions(safeTx);
+      setTenants(safeTenants);
+      setClientCache("transactions", safeTx);
+      setClientCache("tenants", safeTenants);
     } catch (err) {
       console.error("Gagal memuat data laporan:", err);
     } finally {
@@ -103,7 +121,7 @@ export default function LaporanPage() {
   };
 
   return (
-    <main className="flex-1 px-4 md:px-6 py-6 max-w-container-max mx-auto w-full pt-20 md:pt-8 pb-28 md:pb-12">
+    <main className="flex-1 px-4 md:px-6 py-6 max-w-container-max mx-auto w-full pt-28 md:pt-8 pb-28 md:pb-12">
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-end mb-6 pt-2">
         <div>

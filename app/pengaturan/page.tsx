@@ -115,7 +115,7 @@ export default function PengaturanPage() {
   };
 
   return (
-    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-6 pt-20 md:pt-8 pb-28 md:pb-12">
+    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-6 pt-28 md:pt-8 pb-28 md:pb-12">
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-end mb-6 pt-2">
         <div>

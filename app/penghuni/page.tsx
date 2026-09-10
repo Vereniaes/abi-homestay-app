@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getTenants, addTenant, deleteTenant } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
+import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
 import dynamic from "next/dynamic";
 
 const ImportExportModal = dynamic(
@@ -31,13 +32,15 @@ interface Tenant {
 }
 
 // helper --------------------------------------------------------------------------
-// function Halaman Manajemen Penghuni
+// function Halaman Manajemen Penghuni dengan SWR Client Caching
 // input param : none
 // output : React Client Component JSX
 // end of helper ------------------------------------------------------------------
 export default function PenghuniPage() {
   const router = useRouter();
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>(() => {
+    return getClientCache<Tenant[]>("tenants") || [];
+  });
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("semua");
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
@@ -69,12 +72,21 @@ export default function PenghuniPage() {
   }, [search]);
 
   useEffect(() => {
+    if (!debouncedSearch && filter === "semua") {
+      const cached = getClientCache<Tenant[]>("tenants");
+      if (cached && cached.length > 0 && !isCacheStale("tenants", 45000)) {
+        return;
+      }
+    }
     fetchTenants();
   }, [debouncedSearch, filter]);
 
   const fetchTenants = async () => {
     const data = await getTenants(debouncedSearch, filter);
     setTenants(data as unknown as Tenant[]);
+    if (!debouncedSearch && filter === "semua") {
+      setClientCache("tenants", data);
+    }
   };
 
   const handleImportSuccess = async () => {
@@ -112,7 +124,7 @@ export default function PenghuniPage() {
   };
 
   return (
-    <main className="pt-20 md:pt-8 px-4 md:px-6 max-w-container-max mx-auto pb-28 md:pb-12">
+    <main className="pt-28 md:pt-8 px-4 md:px-6 max-w-container-max mx-auto pb-28 md:pb-12">
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-end mb-6 pt-2">
         <div>

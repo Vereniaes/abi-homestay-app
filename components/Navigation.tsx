@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { getCurrentUser, logoutUser, getNotificationAlerts } from "@/app/actions";
 import { getWhatsAppUrl } from "@/lib/phone";
+import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
 
 interface UserSession {
   id: string;
@@ -36,31 +37,44 @@ export default function Navigation() {
     };
     return new Date().toLocaleDateString("id-ID", options);
   });
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(
+    () => getClientCache<UserSession>("currentUser")
+  );
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [alerts, setAlerts] = useState<NotificationAlerts>({
-    dueTenants: [],
-    maintenanceRooms: [],
-    totalAlerts: 0,
+  const [alerts, setAlerts] = useState<NotificationAlerts>(() => {
+    return (
+      getClientCache<NotificationAlerts>("alerts") || {
+        dueTenants: [],
+        maintenanceRooms: [],
+        totalAlerts: 0,
+      }
+    );
   });
 
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Memuat profil pengguna aktif dari cookie sesi
-    getCurrentUser().then((user: UserSession | null) => {
-      if (user) {
-        setCurrentUser(user);
-      }
-    });
+    // Memuat profil pengguna jika belum tersimpan di cache
+    const cachedUser = getClientCache<UserSession>("currentUser");
+    if (!cachedUser) {
+      getCurrentUser().then((user: UserSession | null) => {
+        if (user) {
+          setCurrentUser(user);
+          setClientCache("currentUser", user);
+        }
+      });
+    }
 
-    // Memuat data notifikasi operasional (jatuh tempo & perbaikan)
-    getNotificationAlerts().then((res) => {
-      if (res) {
-        setAlerts(res);
-      }
-    });
-  }, [pathname]);
+    // Memuat data notifikasi jika belum ada atau sudah basi (> 60 detik)
+    if (isCacheStale("alerts", 60000)) {
+      getNotificationAlerts().then((res) => {
+        if (res) {
+          setAlerts(res);
+          setClientCache("alerts", res);
+        }
+      });
+    }
+  }, []);
 
   // helper --------------------------------------------------------------------------
   // function untuk menutup popover notifikasi saat mengklik di luar area popover
@@ -276,25 +290,25 @@ export default function Navigation() {
   return (
     <>
       {/* TopAppBar (Mobile & Tablet) */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-md py-sm bg-[#F8FAFC]/98 border-b border-outline-variant/20 shadow-sm transition-colors duration-200 md:hidden">
-        <div className="flex items-center gap-sm">
-          <div>
-            <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight">
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 py-2.5 bg-[#F8FAFC]/98 border-b border-outline-variant/20 shadow-sm transition-colors duration-200 md:hidden">
+        <div className="flex items-center gap-sm overflow-hidden mr-2">
+          <div className="overflow-hidden">
+            <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight truncate">
               {getTitle()}
             </h1>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
+            <p className="font-label-sm text-label-sm text-on-surface-variant truncate">
               {formattedDate}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {currentUser && (
-            <div className="flex items-center gap-1.5 bg-surface-container/80 border border-outline-variant/40 px-2.5 py-1 rounded-full">
-              <span className="text-[11px] font-bold text-on-surface">
+            <div className="flex items-center gap-1.5 bg-surface-container/80 border border-outline-variant/40 px-2.5 py-1 rounded-full max-w-[140px]">
+              <span className="text-[11px] font-bold text-on-surface truncate max-w-[75px] sm:max-w-[100px]">
                 {currentUser.name}
               </span>
-              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${getRoleBadgeStyle(currentUser.role)}`}>
+              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border shrink-0 ${getRoleBadgeStyle(currentUser.role)}`}>
                 {currentUser.role}
               </span>
             </div>

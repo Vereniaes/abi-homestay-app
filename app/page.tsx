@@ -1,7 +1,7 @@
 import { getDashboardStats } from "./actions";
 import HomeDashboardClient from "@/components/HomeDashboardClient";
 
-export const revalidate = 0;
+export const revalidate = 30;
 
 // helper --------------------------------------------------------------------------
 // function Halaman Utama Beranda (Server Component)

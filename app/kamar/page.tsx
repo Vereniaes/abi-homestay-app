@@ -7,9 +7,10 @@
 //      -> menangani direct link auto-open modal detail kamar dari parameter URL ?room=XX
 // -> kelola status inventaris (baik / perbaikan) dan pembaruan database Prisma
 
-import { useEffect, useState, useTransition, useMemo, Suspense } from "react";
+import { useEffect, useState, useTransition, useMemo, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { getRooms, updateRoomInventory } from "../actions";
+import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
 
 interface Tenant {
   id: string;
@@ -36,7 +37,7 @@ const INVENTORY_ITEMS = [
 ];
 
 // helper --------------------------------------------------------------------------
-// function Komponen Utama Manajemen Kamar
+// function Komponen Utama Manajemen Kamar dengan SWR Client Caching
 // input param : none
 // output : React Client Component JSX untuk grid kamar & modal detail
 // end of helper ------------------------------------------------------------------
@@ -44,19 +45,28 @@ function KamarContent() {
   const searchParams = useSearchParams();
   const roomQuery = searchParams ? searchParams.get("room") : null;
 
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<Room[]>(() => getClientCache<Room[]>("rooms") || []);
   const [search, setSearch] = useState("");
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [inventoryStates, setInventoryStates] = useState<string[]>(["baik", "baik", "baik", "baik", "baik"]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    const cached = getClientCache<Room[]>("rooms");
+    if (cached && cached.length > 0) {
+      setRooms(cached);
+      // Revalidasi senyap di latar belakang hanya jika cache basi (> 45 detik)
+      if (!isCacheStale("rooms", 45000)) return;
+    }
     fetchRooms();
   }, []);
 
   const fetchRooms = async () => {
     const data = await getRooms();
-    setRooms(data as Room[]);
+    if (Array.isArray(data)) {
+      setRooms(data as Room[]);
+      setClientCache("rooms", data);
+    }
   };
 
   // helper --------------------------------------------------------------------------
@@ -130,7 +140,7 @@ function KamarContent() {
   }, [rooms, search]);
 
   return (
-    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-6 pt-20 md:pt-8 pb-28 md:pb-12 flex flex-col min-h-screen">
+    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-6 pt-28 md:pt-8 pb-28 md:pb-12 flex flex-col min-h-screen">
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-end mb-6 pt-2">
         <div>
