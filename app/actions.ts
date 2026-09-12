@@ -234,12 +234,11 @@ export async function getTenants(search: string = "", filter: string = "semua") 
   try {
     const whereCondition: any = {};
 
-    if (filter === "aktif") {
-      whereCondition.status = "ACTIVE";
-    } else if (filter === "akan_jatuh_tempo") {
-      whereCondition.status = "EXPIRING_SOON";
-    } else if (filter === "non_aktif") {
+    if (filter === "non_aktif") {
       whereCondition.status = "INACTIVE";
+    } else if (filter === "aktif" || filter === "akan_jatuh_tempo") {
+      // Kita fetch yang bukan INACTIVE dulu, nanti difilter dinamis di memori
+      whereCondition.status = { not: "INACTIVE" };
     }
 
     if (search.trim()) {
@@ -257,7 +256,7 @@ export async function getTenants(search: string = "", filter: string = "semua") 
       whereCondition.OR = searchOrs;
     }
 
-    return await prisma.tenant.findMany({
+    let tenants = await prisma.tenant.findMany({
       where: whereCondition,
       include: {
         room: true,
@@ -266,6 +265,31 @@ export async function getTenants(search: string = "", filter: string = "semua") 
         createdAt: "desc",
       },
     });
+
+    const now = new Date();
+    
+    // Hitung status EXPIRING_SOON secara dinamis
+    tenants = tenants.map((tenant) => {
+      if (tenant.status === "INACTIVE") return tenant;
+      if (!tenant.dateDue) return tenant;
+      
+      const diffDays = Math.ceil((tenant.dateDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      // Anggap <= 7 hari sebagai akan jatuh tempo (termasuk yang sudah lewat / negatif)
+      if (diffDays <= 7) {
+        return { ...tenant, status: "EXPIRING_SOON" };
+      }
+      // Pastikan yang lain ACTIVE
+      return { ...tenant, status: "ACTIVE" };
+    });
+
+    // Filter memori untuk filter dinamis
+    if (filter === "aktif") {
+      tenants = tenants.filter((t) => t.status === "ACTIVE");
+    } else if (filter === "akan_jatuh_tempo") {
+      tenants = tenants.filter((t) => t.status === "EXPIRING_SOON");
+    }
+
+    return tenants;
   } catch (error) {
     console.error("Error in getTenants:", error);
     return [];
@@ -388,13 +412,8 @@ export async function updateTenant(formData: FormData) {
       dateDue = new Date(dateDueRaw);
     }
 
-    // Tentukan status berdasarkan selisih tanggal jatuh tempo baru terhadap hari ini
-    let status: "ACTIVE" | "EXPIRING_SOON" | "INACTIVE" = existingTenant.status;
-    if (dateDue) {
-      const now = new Date();
-      const diffDays = Math.ceil((dateDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      status = diffDays <= 3 ? "EXPIRING_SOON" : "ACTIVE";
-    }
+    // DB selalu menyimpan ACTIVE atau INACTIVE. EXPIRING_SOON dihitung dinamis.
+    let status: "ACTIVE" | "INACTIVE" = existingTenant.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
 
     const pricing = await prisma.pricing.findFirst();
     const rentAmount = getRentAmount(rentType, pricing);
