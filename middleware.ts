@@ -37,13 +37,12 @@ export function middleware(request: NextRequest) {
   }
 
   // helper --------------------------------------------------------------------------
-  // proteksi rute khusus role ADMIN: /laporan, /pengaturan, /users
+  // proteksi rute khusus role ADMIN: /laporan, /users
   // non-admin yang mengakses rute ini akan dialihkan ke beranda
   // end of helper ------------------------------------------------------------------
   if (isAuthenticated && userRole !== "ADMIN") {
     const isAdminRoute =
       pathname.startsWith("/laporan") ||
-      pathname.startsWith("/pengaturan") ||
       pathname.startsWith("/users");
 
     if (isAdminRoute) {
