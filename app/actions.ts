@@ -690,16 +690,21 @@ export async function addTransaction(formData: FormData) {
           });
           proofUrl = blob.url;
         } catch (blobErr) {
-          console.warn("Vercel Blob upload warning, using local fallback:", blobErr);
-          const fs = await import("fs/promises");
-          const path = await import("path");
-          const uploadDir = path.join(process.cwd(), "public", "uploads", "receipts");
-          await fs.mkdir(uploadDir, { recursive: true });
-          const fileName = `${Date.now()}-${file.name}`;
-          const filePath = path.join(uploadDir, fileName);
-          const buffer = Buffer.from(await file.arrayBuffer());
-          await fs.writeFile(filePath, buffer);
-          proofUrl = `/uploads/receipts/${fileName}`;
+          console.warn("Vercel Blob upload warning, trying local fallback:", blobErr);
+          try {
+            const fs = await import("fs/promises");
+            const path = await import("path");
+            const uploadDir = path.join(process.cwd(), "public", "uploads", "receipts");
+            await fs.mkdir(uploadDir, { recursive: true });
+            const fileName = `${Date.now()}-${file.name}`;
+            const filePath = path.join(uploadDir, fileName);
+            const buffer = Buffer.from(await file.arrayBuffer());
+            await fs.writeFile(filePath, buffer);
+            proofUrl = `/uploads/receipts/${fileName}`;
+          } catch (localErr) {
+            console.error("Local fallback failed (likely read-only environment):", localErr);
+            throw new Error("Upload gagal: Vercel Blob belum dikonfigurasi (BLOB_READ_WRITE_TOKEN) dan server bersifat read-only.");
+          }
         }
       }
     }
@@ -789,16 +794,21 @@ export async function updateTransaction(formData: FormData) {
           });
           proofUrl = blob.url;
         } catch (blobErr) {
-          console.warn("Peringatan upload Vercel Blob, menggunakan local fallback:", blobErr);
-          const fs = await import("fs/promises");
-          const path = await import("path");
-          const uploadDir = path.join(process.cwd(), "public", "uploads", "receipts");
-          await fs.mkdir(uploadDir, { recursive: true });
-          const fileName = `${Date.now()}-${file.name}`;
-          const filePath = path.join(uploadDir, fileName);
-          const buffer = Buffer.from(await file.arrayBuffer());
-          await fs.writeFile(filePath, buffer);
-          proofUrl = `/uploads/receipts/${fileName}`;
+          console.warn("Peringatan upload Vercel Blob, mencoba local fallback:", blobErr);
+          try {
+            const fs = await import("fs/promises");
+            const path = await import("path");
+            const uploadDir = path.join(process.cwd(), "public", "uploads", "receipts");
+            await fs.mkdir(uploadDir, { recursive: true });
+            const fileName = `${Date.now()}-${file.name}`;
+            const filePath = path.join(uploadDir, fileName);
+            const buffer = Buffer.from(await file.arrayBuffer());
+            await fs.writeFile(filePath, buffer);
+            proofUrl = `/uploads/receipts/${fileName}`;
+          } catch (localErr) {
+            console.error("Local fallback failed (likely read-only environment):", localErr);
+            throw new Error("Upload gagal: Vercel Blob belum dikonfigurasi (BLOB_READ_WRITE_TOKEN) dan server bersifat read-only.");
+          }
         }
       }
     }
