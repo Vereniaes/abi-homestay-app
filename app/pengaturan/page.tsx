@@ -331,6 +331,7 @@ export default function PengaturanPage() {
                     <input
                       type="text"
                       value={daily}
+                      readOnly={currentUser?.role === "VIEW"}
                       onChange={(e) => setDaily(e.target.value)}
                       className="w-full bg-surface rounded-lg border border-surface-container-high py-3 pl-10 pr-4 font-body-md text-primary-container focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-shadow"
                     />
@@ -348,6 +349,7 @@ export default function PengaturanPage() {
                     <input
                       type="text"
                       value={weekly}
+                      readOnly={currentUser?.role === "VIEW"}
                       onChange={(e) => setWeekly(e.target.value)}
                       className="w-full bg-surface rounded-lg border border-surface-container-high py-3 pl-10 pr-4 font-body-md text-primary-container focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-shadow"
                     />
@@ -365,6 +367,7 @@ export default function PengaturanPage() {
                     <input
                       type="text"
                       value={monthly}
+                      readOnly={currentUser?.role === "VIEW"}
                       onChange={(e) => setMonthly(e.target.value)}
                       className="w-full bg-surface rounded-lg border border-surface-container-high py-3 pl-10 pr-4 font-body-md text-primary-container focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-shadow"
                     />
@@ -382,6 +385,7 @@ export default function PengaturanPage() {
                     <input
                       type="text"
                       value={semesterly}
+                      readOnly={currentUser?.role === "VIEW"}
                       onChange={(e) => setSemesterly(e.target.value)}
                       className="w-full bg-surface rounded-lg border border-surface-container-high py-3 pl-10 pr-4 font-body-md text-primary-container focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-shadow"
                     />
@@ -399,6 +403,7 @@ export default function PengaturanPage() {
                     <input
                       type="text"
                       value={yearly}
+                      readOnly={currentUser?.role === "VIEW"}
                       onChange={(e) => setYearly(e.target.value)}
                       className="w-full bg-surface rounded-lg border border-surface-container-high py-3 pl-10 pr-4 font-body-md text-primary-container focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-shadow"
                     />
@@ -413,13 +418,15 @@ export default function PengaturanPage() {
                   >
                     Batal
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="flex-1 py-3 px-4 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md text-center shadow-md shadow-secondary/20 hover:bg-secondary-container hover:text-secondary-fixed-variant transition-colors premium-glow"
-                  >
-                    {isPending ? "Menyimpan..." : "Simpan Perubahan"}
-                  </button>
+                  {currentUser?.role !== "VIEW" && (
+                    <button
+                      type="submit"
+                      disabled={isPending}
+                      className="flex-1 py-3 px-4 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md text-center shadow-md shadow-secondary/20 hover:bg-secondary-container hover:text-secondary-fixed-variant transition-colors premium-glow"
+                    >
+                      {isPending ? "Menyimpan..." : "Simpan Perubahan"}
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
@@ -521,22 +528,23 @@ export default function PengaturanPage() {
                 </div>
 
                 {/* Tutorial 3: Transaksi */}
-                <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/30">
-                  <h3 className="font-title-md text-primary-container flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-secondary text-sm">receipt_long</span>
-                    </div>
-                    3. Mencatat Pembayaran
-                  </h3>
-                  <ul className="list-disc list-outside text-body-sm text-on-surface-variant space-y-2 ml-5">
-                    <li>Buka menu <strong className="text-primary-container">Laporan</strong>, lalu klik tombol plus <strong className="text-primary-container">"Tambah Transaksi"</strong>.</li>
-                    <li>Pilih jenis <strong className="text-primary-container">Pemasukan</strong> (untuk bayar uang kos) atau <strong className="text-primary-container">Pengeluaran</strong> (untuk operasional).</li>
-                    <li>Pilih nama penghuni yang membayar, lalu isikan nominal pembayarannya.</li>
-                    <li>Anda bisa mengunggah foto struk/bukti transfer bank dengan menekan tombol <strong>"Upload Bukti Transaksi"</strong>.</li>
-                    <li>Transaksi akan terekam dan tanggal jatuh tempo tagihan penghuni akan otomatis diperbarui!</li>
-                  </ul>
-                </div>
-
+                {currentUser?.role === "ADMIN" && (
+                  <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/30">
+                    <h3 className="font-title-md text-primary-container flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-secondary text-sm">receipt_long</span>
+                      </div>
+                      3. Mencatat Pembayaran
+                    </h3>
+                    <ul className="list-disc list-outside text-body-sm text-on-surface-variant space-y-2 ml-5">
+                      <li>Buka menu <strong className="text-primary-container">Laporan</strong>, lalu klik tombol plus <strong className="text-primary-container">"Tambah Transaksi"</strong>.</li>
+                      <li>Pilih jenis <strong className="text-primary-container">Pemasukan</strong> (untuk bayar uang kos) atau <strong className="text-primary-container">Pengeluaran</strong> (untuk operasional).</li>
+                      <li>Pilih nama penghuni yang membayar, lalu isikan nominal pembayarannya.</li>
+                      <li>Anda bisa mengunggah foto struk/bukti transfer bank dengan menekan tombol <strong>"Upload Bukti Transaksi"</strong>.</li>
+                      <li>Transaksi akan terekam dan tanggal jatuh tempo tagihan penghuni akan otomatis diperbarui!</li>
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div className="pt-6 flex gap-3">
