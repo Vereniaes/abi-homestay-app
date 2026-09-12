@@ -64,7 +64,7 @@
   --inverse-primary: #565e74;
   --outline: #8c9199;
   --secondary-fixed-dim: #4ebbb0;
-  --on-primary-container: #d9e2ff;
+  --on-primary-container: #1e293b;
   --tertiary: #ffffff;
   --background: #0f172a;
   --on-primary: #002b5e;
@@ -72,7 +72,7 @@
   --secondary: #4cdacc;
   --on-secondary-container: #86f2e4;
   --on-secondary: #003732;
-  --primary-container: #1e293b;
+  --primary-container: #e2e8f0;
   --surface-tint: #bec6e0;
   --on-tertiary-container: #ffdcbe;
   --on-primary-fixed: #d9e2ff;
@@ -257,7 +257,7 @@ body {
 .swipe-content {
   position: relative;
   z-index: 1;
-  background: white;
+  background: var(--surface-container-lowest);
   transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   touch-action: pan-y left right;
 }

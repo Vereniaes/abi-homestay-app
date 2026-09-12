@@ -186,12 +186,12 @@ function KamarContent() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#F1F5F9] border border-outline-variant/30 rounded-xl py-3 pl-10 pr-4 font-body-md text-body-md text-on-surface focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors placeholder:font-body-md placeholder:text-on-surface-variant/60"
+            className="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl py-3 pl-10 pr-4 font-body-md text-body-md text-on-surface focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors placeholder:font-body-md placeholder:text-on-surface-variant/60"
             placeholder="Cari No. Kamar..."
             type="text"
           />
         </div>
-        <button className="shrink-0 w-12 h-12 bg-white rounded-xl border border-outline-variant/30 flex items-center justify-center text-primary shadow-sm hover:shadow-md transition-shadow press-effect">
+        <button className="shrink-0 w-12 h-12 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex items-center justify-center text-primary shadow-sm hover:shadow-md transition-shadow press-effect">
           <span className="material-symbols-outlined">tune</span>
         </button>
       </div>
@@ -287,7 +287,7 @@ function KamarContent() {
                   <h3 className="font-label-md text-label-md text-on-surface-variant mb-3">
                     Informasi Penghuni
                   </h3>
-                  <div className="bg-white rounded-xl p-4 shadow-sm border border-outline-variant/20 flex items-center gap-4">
+                  <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/20 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-secondary-container text-secondary flex items-center justify-center font-headline-md">
                       <span className="material-symbols-outlined">person</span>
                     </div>
@@ -308,7 +308,7 @@ function KamarContent() {
                 <h3 className="font-label-md text-label-md text-on-surface-variant mb-3">
                   Inventaris &amp; Kondisi
                 </h3>
-                <div className="bg-white rounded-xl border border-outline-variant/20 shadow-sm overflow-hidden divide-y divide-surface-variant/50">
+                <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/20 shadow-sm overflow-hidden divide-y divide-surface-variant/50">
                   {INVENTORY_ITEMS.map((item, idx) => {
                     const state = inventoryStates[idx] || "baik";
                     return (
@@ -336,7 +336,7 @@ function KamarContent() {
                               onClick={() => handleToggleInventory(idx, "baik")}
                               className={`px-3 py-1 rounded-md text-xs transition-all duration-200 ${
                                 state === "baik"
-                                  ? "font-semibold bg-white shadow-sm text-secondary"
+                                  ? "font-semibold bg-surface-container-lowest shadow-sm text-secondary"
                                   : "font-medium text-on-surface-variant"
                               }`}
                             >
