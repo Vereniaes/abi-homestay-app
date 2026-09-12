@@ -306,15 +306,12 @@ export default function PenghuniPage() {
         {tenants.map((t, idx) => {
           const isExpiring = t.status === "EXPIRING_SOON";
           const isInactive = t.status === "INACTIVE";
-          const isAboveFold = idx < 8;
-          const animDelay = isAboveFold ? `${(idx * 0.03).toFixed(2)}s` : "0s";
 
           return (
             <div
               key={t.id}
               onClick={() => setSelectedTenant(t)}
-              className={`lazy-card tenant-card swipe-action-wrapper shadow-[0px_4px_20px_rgba(15,23,42,0.05)] rounded-2xl bg-surface-container-low animate-slide-up gpu-accelerate`}
-              style={{ animationDelay: animDelay }}
+              className={`lazy-card tenant-card swipe-action-wrapper shadow-[0px_4px_20px_rgba(15,23,42,0.05)] rounded-2xl bg-surface-container-low gpu-accelerate transition-colors`}
             >
               <div className="swipe-content p-4 rounded-2xl flex items-center gap-4 cursor-pointer">
                 <div className="relative w-14 h-14 shrink-0 bg-surface-variant rounded-full flex items-center justify-center">
