@@ -375,8 +375,8 @@ export default function LaporanPage() {
                         ></div>
                       ) : (
                         <div className="w-full h-full bg-surface-variant flex flex-col items-center justify-center text-outline gap-1">
-                          <span className="material-symbols-outlined text-[32px]">receipt_long</span>
-                          <span className="text-[10px] font-semibold">Nota Digital</span>
+                          <span className="material-symbols-outlined text-[32px]">image_not_supported</span>
+                          <span className="text-[10px] font-semibold">Tidak Ada Foto</span>
                         </div>
                       )}
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold gap-1 transition-opacity">
@@ -753,63 +753,11 @@ export default function LaporanPage() {
                   </div>
                 </div>
               ) : (
-                /* Nota Struk Digital Resmi jika tanpa upload foto */
-                <div className="p-6 bg-surface-container-lowest border-2 border-dashed border-outline-variant/50 rounded-2xl space-y-4">
-                  <div className="text-center pb-3 border-b border-dashed border-outline-variant/50">
-                    <h4 className="font-headline-md text-primary font-extrabold tracking-wide uppercase">
-                      Abi Homestay
-                    </h4>
-                    <p className="text-label-sm text-outline">Tanda Terima Pembayaran Resmi</p>
-                    <span className="inline-block mt-2 px-3 py-0.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] text-xs font-extrabold tracking-wider uppercase border border-[#2E7D32]/20">
-                      Lunas
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 text-body-md">
-                    <div className="flex justify-between items-center">
-                      <span className="text-outline">No. Referensi:</span>
-                      <span className="font-bold text-on-surface font-mono">{previewReceiptTx.refId}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-outline">Tanggal:</span>
-                      <span className="font-semibold text-on-surface">
-                        {new Date(previewReceiptTx.date).toLocaleDateString("id-ID", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-outline">Penerima / Penghuni:</span>
-                      <span className="font-bold text-primary">
-                        {previewReceiptTx.tenant ? previewReceiptTx.tenant.name : "Umum / Operasional"}
-                      </span>
-                    </div>
-                    {previewReceiptTx.room && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-outline">Nomor Kamar:</span>
-                        <span className="font-bold text-on-surface">Kamar {previewReceiptTx.room.number}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-outline">Rincian:</span>
-                      <span className="font-semibold text-on-surface">
-                        {previewReceiptTx.type === "EXPENSE" ? previewReceiptTx.description : previewReceiptTx.rentType || "Sewa Kost"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-outline">Metode:</span>
-                      <span className="font-semibold text-on-surface">{previewReceiptTx.paymentMethod}</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t-2 border-dashed border-outline-variant/50 flex justify-between items-center">
-                    <span className="font-bold text-body-lg text-on-surface">Total Dibayar:</span>
-                    <span className="font-headline-lg text-headline-md text-secondary font-extrabold">
-                      Rp {previewReceiptTx.amount.toLocaleString("id-ID")}
-                    </span>
+                <div className="p-10 flex flex-col items-center justify-center text-center space-y-3 bg-surface-container-lowest border-2 border-dashed border-outline-variant/50 rounded-2xl">
+                  <span className="material-symbols-outlined text-5xl text-outline-variant">image_not_supported</span>
+                  <div>
+                    <h4 className="font-headline-md text-on-surface font-bold">Foto Bukti Tidak Tersedia</h4>
+                    <p className="text-body-sm text-outline mt-1">Transaksi ini tidak memiliki file foto bukti transfer asli yang diunggah.</p>
                   </div>
                 </div>
               )}
