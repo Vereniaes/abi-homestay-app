@@ -280,7 +280,10 @@ export default function PengaturanPage() {
 
         {/* Support Group */}
         <div className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-sm border border-surface-container-low md:col-span-2 mt-sm md:mt-0 animate-slide-up stagger-4">
-          <button className="menu-item w-full flex items-center justify-between p-3 rounded-lg hover:premium-glow group bg-surface-container-lowest">
+          <button 
+            onClick={() => setActiveSheet("HELP")}
+            className="menu-item w-full flex items-center justify-between p-3 rounded-lg hover:premium-glow group bg-surface-container-lowest"
+          >
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center text-primary-container group-hover:bg-secondary/10 group-hover:text-secondary transition-colors">
                 <span className="material-symbols-outlined">help</span>
@@ -458,6 +461,91 @@ export default function PengaturanPage() {
                   className="flex-1 py-3 px-4 rounded-xl bg-surface-variant text-on-surface-variant font-label-md text-label-md text-center hover:bg-surface-container-high transition-colors"
                 >
                   Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Popup: Pusat Bantuan */}
+      {activeSheet === "HELP" && (
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
+          <div
+            onClick={() => setActiveSheet(null)}
+            className="fixed inset-0 bg-black/50 transition-opacity"
+          ></div>
+          <div className="relative w-full md:w-[600px] bg-surface-container-lowest z-10 rounded-t-3xl md:rounded-3xl shadow-2xl pt-2 pb-safe max-h-[85vh] overflow-y-auto hide-scrollbar animate-slide-up">
+            <div
+              className="w-12 h-1.5 bg-surface-container-highest rounded-full mx-auto mb-4 cursor-pointer"
+              onClick={() => setActiveSheet(null)}
+            ></div>
+            <div className="px-md pb-6">
+              <h2 className="font-headline-md text-headline-md text-primary-container mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">help</span>
+                Pusat Bantuan &amp; Tutorial
+              </h2>
+
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                
+                {/* Tutorial 1: Penghuni */}
+                <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/30">
+                  <h3 className="font-title-md text-primary-container flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-secondary text-sm">group_add</span>
+                    </div>
+                    1. Mengelola Penghuni
+                  </h3>
+                  <ul className="list-disc list-outside text-body-sm text-on-surface-variant space-y-2 ml-5">
+                    <li>Buka menu <strong className="text-primary-container">Penghuni</strong> dari navigasi bawah.</li>
+                    <li>Klik tombol <strong className="text-primary-container">"Tambah Penghuni Baru"</strong> untuk mendaftarkan penyewa.</li>
+                    <li>Isi formulir seperti nama, nomor WhatsApp (gunakan format 08xxx), dan pilih kamar yang tersedia.</li>
+                    <li>Penyewa akan otomatis menempati kamar tersebut dan tagihan akan dihitung secara otomatis.</li>
+                    <li>Untuk mengeluarkan (checkout) penghuni, klik tombol silang (Hapus/Checkout) pada kartu penghuni.</li>
+                  </ul>
+                </div>
+
+                {/* Tutorial 2: Kamar */}
+                <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/30">
+                  <h3 className="font-title-md text-primary-container flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-secondary text-sm">meeting_room</span>
+                    </div>
+                    2. Manajemen Kamar
+                  </h3>
+                  <ul className="list-disc list-outside text-body-sm text-on-surface-variant space-y-2 ml-5">
+                    <li>Buka menu <strong className="text-primary-container">Kamar</strong> untuk melihat status seluruh kamar.</li>
+                    <li>Kamar berstatus <strong>Kosong</strong> berwarna hijau, <strong>Terisi</strong> berwarna biru, dan <strong>Perbaikan</strong> berwarna merah.</li>
+                    <li>Klik <strong className="text-primary-container">Edit Kamar</strong> untuk mengubah status (misal dari Kosong ke Perbaikan jika ada kerusakan) atau untuk mengubah catatan fasilitas khusus di kamar tersebut.</li>
+                  </ul>
+                </div>
+
+                {/* Tutorial 3: Transaksi */}
+                <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/30">
+                  <h3 className="font-title-md text-primary-container flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-secondary text-sm">receipt_long</span>
+                    </div>
+                    3. Mencatat Pembayaran
+                  </h3>
+                  <ul className="list-disc list-outside text-body-sm text-on-surface-variant space-y-2 ml-5">
+                    <li>Buka menu <strong className="text-primary-container">Laporan</strong>, lalu klik tombol plus <strong className="text-primary-container">"Tambah Transaksi"</strong>.</li>
+                    <li>Pilih jenis <strong className="text-primary-container">Pemasukan</strong> (untuk bayar uang kos) atau <strong className="text-primary-container">Pengeluaran</strong> (untuk operasional).</li>
+                    <li>Pilih nama penghuni yang membayar, lalu isikan nominal pembayarannya.</li>
+                    <li>Anda bisa mengunggah foto struk/bukti transfer bank dengan menekan tombol <strong>"Upload Bukti Transaksi"</strong>.</li>
+                    <li>Transaksi akan terekam dan tanggal jatuh tempo tagihan penghuni akan otomatis diperbarui!</li>
+                  </ul>
+                </div>
+
+              </div>
+
+              <div className="pt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveSheet(null)}
+                  className="flex-1 py-3 px-4 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md text-center hover:bg-secondary-container hover:text-secondary-fixed-variant transition-colors premium-glow"
+                >
+                  Saya Mengerti
                 </button>
               </div>
             </div>
