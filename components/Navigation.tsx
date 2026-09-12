@@ -186,7 +186,7 @@ export default function Navigation() {
         {/* Popover Dropdown Notifikasi */}
         {isNotificationOpen && (
           <div
-            className={`absolute ${popoverPositionClass} bg-white border border-outline-variant/40 rounded-2xl shadow-xl z-50 p-4 text-on-surface`}
+            className={`absolute ${popoverPositionClass} bg-surface-container-highest border border-outline-variant/40 rounded-2xl shadow-xl z-50 p-4 text-on-surface`}
           >
             {/* Header Popover */}
             <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-3">
@@ -299,7 +299,7 @@ export default function Navigation() {
   return (
     <>
       {/* TopAppBar (Mobile & Tablet) */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 py-2.5 bg-[#F8FAFC]/98 border-b border-outline-variant/20 shadow-sm transition-colors duration-200 md:hidden">
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 py-2.5 bg-surface-container-lowest border-b border-outline-variant/20 shadow-sm transition-colors duration-200 md:hidden">
         <div className="flex items-center gap-sm overflow-hidden mr-2">
           <div className="overflow-hidden">
             <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight truncate">
@@ -441,7 +441,7 @@ export default function Navigation() {
       </aside>
 
       {/* BottomNavBar (Mobile) */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-1 sm:px-3 pb-safe pt-1.5 bg-[#F8FAFC]/98 border-t border-outline-variant/20 shadow-[0px_-4px_20px_rgba(15,23,42,0.05)] rounded-t-xl md:hidden">
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-1 sm:px-3 pb-safe pt-1.5 bg-surface-container-lowest border-t border-outline-variant/20 shadow-[0px_-4px_20px_rgba(15,23,42,0.05)] rounded-t-xl md:hidden">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
