@@ -50,7 +50,7 @@ export default function PengaturanPage() {
   const [setting, setSetting] = useState<Setting | null>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
-  const [activeSheet, setActiveSheet] = useState<"PRICE" | "FACILITIES" | null>(null);
+  const [activeSheet, setActiveSheet] = useState<"PRICE" | "FACILITIES" | "HELP" | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Pricing Form States
