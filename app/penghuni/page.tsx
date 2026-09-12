@@ -102,6 +102,7 @@ export default function PenghuniPage() {
     if (!debouncedSearch && filter === "semua") {
       const cached = getClientCache<Tenant[]>("tenants");
       if (cached && cached.length > 0 && !isCacheStale("tenants", 45000)) {
+        setTenants(cached);
         return;
       }
     }
