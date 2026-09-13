@@ -208,14 +208,22 @@ function KamarContent() {
             let iconBg = "bg-[#0D9488]/10 text-[#0D9488]";
             let iconName = "check_circle";
 
-            if (room.status === "MAINTENANCE") {
+            const tenantCount = room.tenants ? room.tenants.length : 0;
+            // Koreksi bug: jika status database tidak sinkron dengan jumlah tenant aktual
+            let actualStatus = room.status;
+            if (tenantCount === 0 && room.status === "OCCUPIED") {
+              actualStatus = "AVAILABLE";
+            } else if (tenantCount > 0 && room.status === "AVAILABLE") {
+              actualStatus = "OCCUPIED";
+            }
+
+            if (actualStatus === "MAINTENANCE") {
               stateClass = "state-maintenance";
               iconBg = "bg-[#F59E0B]/10 text-[#D97706]";
               iconName = "build";
-            } else if (room.status === "OCCUPIED") {
+            } else if (actualStatus === "OCCUPIED") {
               stateClass = "state-occupied";
               iconBg = "bg-primary-container text-primary";
-              const tenantCount = room.tenants ? room.tenants.length : 0;
               iconName = tenantCount >= 2 ? "group" : "person";
             }
 
