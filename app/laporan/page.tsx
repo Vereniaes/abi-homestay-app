@@ -4,6 +4,20 @@ import { useEffect, useState, useTransition, useMemo } from "react";
 import { getTransactions, getTenants, addTransaction, updateTransaction } from "../actions";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
+import { compressImage } from "@/lib/image-compression";
+
+// helper --------------------------------------------------------------------------
+// function untuk memformat URL bukti transaksi ke streaming proxy jika berupa private blob
+// input param : url (string | null)
+// output : string | null
+// end of helper ------------------------------------------------------------------
+const formatProofUrl = (url: string | null): string | null => {
+  if (!url) return null;
+  if (url.includes(".private.blob.") && !url.startsWith("/api/receipts")) {
+    return `/api/receipts?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
 
 interface Tenant {
   id: string;
@@ -141,7 +155,7 @@ export default function LaporanPage() {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const handleSubmitTransaction = (e: React.FormEvent) => {
+  const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData();
     formData.append("type", txType);
@@ -150,11 +164,8 @@ export default function LaporanPage() {
     formData.append("amount", amount);
     
     if (selectedFile) {
-      if (selectedFile.size > 1 * 1024 * 1024) {
-        alert("Maaf, ukuran gambar terlalu besar (Maksimal 1MB). Silakan kompres atau pilih gambar lain.");
-        return;
-      }
-      formData.append("file", selectedFile);
+      const fileToUpload = await compressImage(selectedFile);
+      formData.append("file", fileToUpload);
     }
 
     startTransition(async () => {
@@ -166,6 +177,7 @@ export default function LaporanPage() {
       setSelectedTenantId("");
       // Invalidasi cache agar data baru langsung terlihat
       clearClientCache("transactions");
+      clearClientCache("dashboardStats");
       setCurrentPage(1);
       await fetchData();
     });
@@ -198,7 +210,7 @@ export default function LaporanPage() {
   // input param : e (React.FormEvent)
   // output : void (memanggil server action updateTransaction)
   // end of helper ------------------------------------------------------------------
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEditError("");
 
@@ -212,11 +224,8 @@ export default function LaporanPage() {
     formData.append("removeProof", String(editRemoveProof));
 
     if (editSelectedFile) {
-      if (editSelectedFile.size > 2 * 1024 * 1024) {
-        setEditError("Ukuran gambar terlalu besar (Maksimal 2MB).");
-        return;
-      }
-      formData.append("file", editSelectedFile);
+      const fileToUpload = await compressImage(editSelectedFile);
+      formData.append("file", fileToUpload);
     }
 
     startTransition(async () => {
@@ -375,7 +384,7 @@ export default function LaporanPage() {
                       {tx.proofUrl ? (
                         <div
                           className="w-full h-full bg-cover bg-center"
-                          style={{ backgroundImage: `url('${tx.proofUrl}')` }}
+                          style={{ backgroundImage: `url('${formatProofUrl(tx.proofUrl)}')` }}
                         ></div>
                       ) : (
                         <div className="w-full h-full bg-surface-variant flex flex-col items-center justify-center text-outline gap-1">
@@ -731,14 +740,14 @@ export default function LaporanPage() {
                 <div className="space-y-4">
                   <div className="relative w-full rounded-2xl overflow-hidden border border-outline-variant/40 bg-black/5 flex items-center justify-center min-h-[220px] max-h-[50vh]">
                     <img
-                      src={previewReceiptTx.proofUrl}
+                      src={formatProofUrl(previewReceiptTx.proofUrl) || ""}
                       alt="Bukti Transfer Pembayaran"
                       className="max-h-[50vh] w-auto max-w-full object-contain rounded-xl"
                     />
                   </div>
                   <div className="flex items-center gap-3 pt-1">
                     <a
-                      href={previewReceiptTx.proofUrl}
+                      href={formatProofUrl(previewReceiptTx.proofUrl) || "#"}
                       target="_blank"
                       rel="noreferrer"
                       className="flex-1 py-3 px-4 rounded-xl bg-secondary text-on-secondary font-label-md font-bold text-center flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
@@ -747,7 +756,7 @@ export default function LaporanPage() {
                       Buka Gambar Penuh
                     </a>
                     <a
-                      href={previewReceiptTx.proofUrl}
+                      href={formatProofUrl(previewReceiptTx.proofUrl) || "#"}
                       download={`struk-${previewReceiptTx.refId}.jpg`}
                       className="py-3 px-4 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md font-bold flex items-center justify-center gap-1.5 border border-outline-variant/40 transition-colors"
                     >
@@ -900,7 +909,7 @@ export default function LaporanPage() {
                   {editProofUrl && !editRemoveProof ? (
                     <div className="flex items-center gap-3 p-2 bg-surface rounded-xl border border-outline-variant/40">
                       <img
-                        src={editProofUrl}
+                        src={formatProofUrl(editProofUrl) || ""}
                         alt="Bukti Struk Lama"
                         className="w-14 h-14 object-cover rounded-lg border border-outline-variant/30"
                       />

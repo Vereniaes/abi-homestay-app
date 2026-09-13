@@ -24,6 +24,10 @@ export function middleware(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   const isLoginPage = pathname === "/login";
 
   if (!isAuthenticated && !isLoginPage) {
