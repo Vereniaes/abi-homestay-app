@@ -43,7 +43,8 @@ export default function Navigation() {
     );
   });
 
-  const popoverRef = useRef<HTMLDivElement>(null);
+  const mobilePopoverRef = useRef<HTMLDivElement>(null);
+  const desktopPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Komputasi tanggal di sisi klien (PPR membutuhkan nilai stabil saat prerender)
@@ -85,7 +86,11 @@ export default function Navigation() {
   // end of helper ------------------------------------------------------------------
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const insideMobile = mobilePopoverRef.current && mobilePopoverRef.current.contains(target);
+      const insideDesktop = desktopPopoverRef.current && desktopPopoverRef.current.contains(target);
+
+      if (!insideMobile && !insideDesktop) {
         setIsNotificationOpen(false);
       }
     };
@@ -163,13 +168,11 @@ export default function Navigation() {
   // output : React JSX Component Popover Notifikasi
   // end of helper ------------------------------------------------------------------
   const renderNotificationWidget = (position: "mobile" | "desktop") => {
-    const popoverPositionClass =
-      position === "mobile"
-        ? "right-0 top-12 w-[calc(100vw-2rem)] sm:w-[360px] max-w-[360px]"
-        : "left-full top-0 ml-3 w-[360px] max-w-[360px]";
+    const popoverPositionClass = "right-0 top-12 w-[calc(100vw-2rem)] sm:w-[360px] max-w-[360px]";
+    const currentRef = position === "mobile" ? mobilePopoverRef : desktopPopoverRef;
 
     return (
-      <div className="relative" ref={popoverRef}>
+      <div className="relative" ref={currentRef}>
         <button
           type="button"
           onClick={() => setIsNotificationOpen(!isNotificationOpen)}
@@ -337,22 +340,35 @@ export default function Navigation() {
         </div>
       </header>
 
-      {/* Desktop SideNav */}
-      <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 bg-surface shadow-sm z-40 pt-md px-4 pb-4 border-r border-outline-variant/30">
-        <div className="flex items-center justify-between mb-xl px-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center shadow-soft-teal">
-              <span className="material-symbols-outlined text-white text-sm" data-icon="apartment">
-                apartment
-              </span>
+      {/* Desktop Top-Right Floating Widget (Profil & Notifikasi) */}
+      <div className="hidden md:flex fixed top-4 right-8 z-40 items-center gap-3">
+        {currentUser && (
+          <div className="flex items-center gap-2 bg-surface-container-lowest/90 backdrop-blur-md border border-outline-variant/30 px-3 py-1.5 rounded-full shadow-sm">
+            <div className="w-6 h-6 rounded-full bg-secondary-container/60 text-secondary flex items-center justify-center text-xs font-bold">
+              {currentUser.name.charAt(0).toUpperCase()}
             </div>
-            <span className="font-headline-md text-headline-md text-primary font-bold">
-              Abi Homestay
+            <span className="text-xs font-bold text-on-surface max-w-[120px] truncate">
+              {currentUser.name}
+            </span>
+            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${getRoleBadgeStyle(currentUser.role)}`}>
+              {currentUser.role}
             </span>
           </div>
+        )}
+        {renderNotificationWidget("desktop")}
+      </div>
 
-          {/* Tombol & Popover Notifikasi Desktop */}
-          {renderNotificationWidget("desktop")}
+      {/* Desktop SideNav */}
+      <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 bg-surface shadow-sm z-40 pt-md px-4 pb-4 border-r border-outline-variant/30">
+        <div className="flex items-center gap-2.5 mb-xl px-2">
+          <div className="w-9 h-9 bg-secondary rounded-xl flex items-center justify-center shadow-soft-teal">
+            <span className="material-symbols-outlined text-white text-base" data-icon="apartment">
+              apartment
+            </span>
+          </div>
+          <span className="font-headline-md text-headline-md text-primary font-bold tracking-tight">
+            Abi Homestay
+          </span>
         </div>
 
         <nav className="flex flex-col gap-2 flex-1">

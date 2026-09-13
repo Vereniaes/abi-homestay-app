@@ -57,7 +57,7 @@ export default function PengaturanPage() {
   const [daily, setDaily] = useState("150.000");
   const [weekly, setWeekly] = useState("900.000");
   const [monthly, setMonthly] = useState("2.500.000");
-  const [semesterly, setSemesterly] = useState("14.000.000");
+  const [semesterly, setSemesterly] = useState("8.000.000");
   const [yearly, setYearly] = useState("28.000.000");
 
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -78,7 +78,7 @@ export default function PengaturanPage() {
       setDaily(data.pricing.dailyPrice.toLocaleString("id-ID"));
       setWeekly(data.pricing.weeklyPrice.toLocaleString("id-ID"));
       setMonthly(data.pricing.monthlyPrice.toLocaleString("id-ID"));
-      setSemesterly(((data.pricing as any).semesterlyPrice || 14000000).toLocaleString("id-ID"));
+      setSemesterly(((data.pricing as any).semesterlyPrice || 8000000).toLocaleString("id-ID"));
       setYearly(data.pricing.yearlyPrice.toLocaleString("id-ID"));
     }
     if (data.setting) {

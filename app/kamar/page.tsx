@@ -238,15 +238,27 @@ function KamarContent() {
                 className={`lazy-card ${animClass} ${stateClass} rounded-2xl p-3 flex flex-col items-center justify-center aspect-square press-effect cursor-pointer gpu-accelerate`}
                 style={{ animationDelay: delay }}
               >
-                <span className="font-headline-lg text-headline-lg font-bold text-primary mb-2">
+                <span className="font-headline-lg text-headline-lg font-bold text-primary mb-1">
                   {room.number}
                 </span>
 
-                <div className={`w-8 h-8 rounded-full ${iconBg} flex items-center justify-center`}>
-                  <span className="material-symbols-outlined text-[18px]">
+                <div className={`w-7 h-7 rounded-full ${iconBg} flex items-center justify-center mb-1.5`}>
+                  <span className="material-symbols-outlined text-[16px]">
                     {iconName}
                   </span>
                 </div>
+
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border tracking-tight ${
+                  actualStatus === "MAINTENANCE"
+                    ? "bg-[#F59E0B]/10 text-[#D97706] border-[#F59E0B]/30"
+                    : tenantCount === 0
+                    ? "bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/20"
+                    : tenantCount === 1
+                    ? "bg-secondary-container/40 text-secondary border-secondary/30"
+                    : "bg-primary-container text-white dark:bg-slate-700 dark:text-slate-200 border-slate-700/40"
+                }`}>
+                  {actualStatus === "MAINTENANCE" ? "Perbaikan" : `${tenantCount}/2 ${tenantCount >= 2 ? "Penuh" : "Orang"}`}
+                </span>
               </div>
             );
           })}

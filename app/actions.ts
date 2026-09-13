@@ -925,7 +925,7 @@ export async function getPricingAndSettings() {
           dailyPrice: 150000,
           weeklyPrice: 900000,
           monthlyPrice: 2500000,
-          semesterlyPrice: 14000000,
+          semesterlyPrice: 8000000,
           yearlyPrice: 28000000,
         } as any,
       });
@@ -933,7 +933,7 @@ export async function getPricingAndSettings() {
       // Fallback jika database sudah ada record tapi belum punya field semesterlyPrice
       pricing = {
         ...pricing,
-        semesterlyPrice: 14000000,
+        semesterlyPrice: 8000000,
       } as any;
     }
 
@@ -955,7 +955,7 @@ export async function getPricingAndSettings() {
         dailyPrice: 150000,
         weeklyPrice: 900000,
         monthlyPrice: 2500000,
-        semesterlyPrice: 14000000,
+        semesterlyPrice: 8000000,
         yearlyPrice: 28000000,
       },
       setting: {
