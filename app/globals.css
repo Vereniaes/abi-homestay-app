@@ -217,8 +217,8 @@ body {
   box-shadow: 0px 4px 20px rgba(13, 148, 136, 0.05);
 }
 .state-occupied {
-  background-color: #FFFFFF;
-  border: 1px solid rgba(15, 23, 42, 0.05);
+  background-color: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
   box-shadow: 0px 4px 20px rgba(15, 23, 42, 0.05);
 }
 .state-maintenance {

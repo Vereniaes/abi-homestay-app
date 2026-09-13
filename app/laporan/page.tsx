@@ -248,25 +248,29 @@ export default function LaporanPage() {
 
       {/* Top Section: Pendapatan */}
       <section className="mb-8 pt-2">
-        <div className="relative bg-primary-container rounded-3xl p-6 overflow-hidden shadow-lg border border-outline-variant/20">
-          <div className="absolute inset-0 bg-chart-pattern opacity-60"></div>
+        <div className="relative bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0D9488]/80 dark:from-[#0F172A] dark:via-[#1E293B] dark:to-[#0D9488]/40 rounded-3xl p-6 md:p-8 overflow-hidden shadow-2xl border border-white/10">
+          <div className="absolute inset-0 bg-chart-pattern opacity-40 mix-blend-overlay"></div>
+          
+          {/* Decorative glow */}
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#0D9488] rounded-full blur-[80px] opacity-20"></div>
+
           <div className="relative z-10">
-            <p className="text-inverse-primary text-label-md uppercase tracking-wider mb-2">
+            <p className="text-white/70 text-label-md uppercase tracking-widest mb-2 font-semibold">
               Pendapatan Bulan Ini
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-on-primary text-body-lg font-semibold">Rp</span>
+              <span className="text-white/90 text-body-lg font-bold">Rp</span>
               {isLoading ? (
-                <div className="h-10 w-44 rounded-xl skeleton-shimmer my-1 opacity-60"></div>
+                <div className="h-12 w-48 rounded-xl skeleton-shimmer my-1 opacity-60"></div>
               ) : (
-                <h2 className="text-on-primary text-2xl sm:text-3xl md:text-[40px] leading-tight font-bold tracking-tight animate-slide-up">
+                <h2 className="text-white text-3xl sm:text-4xl md:text-[44px] leading-tight font-extrabold tracking-tight animate-slide-up drop-shadow-sm">
                   <AnimatedCounter target={totalRevenue} formatCurrency={true} />
                 </h2>
               )}
             </div>
-            <div className="mt-4 flex items-center gap-2 text-secondary-fixed">
-              <span className="material-symbols-outlined text-[18px]">trending_up</span>
-              <span className="text-label-sm">+12.5% vs bulan lalu</span>
+            <div className="mt-5 flex items-center gap-2 text-[#6bd8cb] bg-[#6bd8cb]/10 w-fit px-3 py-1.5 rounded-full border border-[#6bd8cb]/20 backdrop-blur-sm">
+              <span className="material-symbols-outlined text-[16px]">trending_up</span>
+              <span className="text-label-sm font-bold">+12.5% vs bulan lalu</span>
             </div>
           </div>
         </div>
