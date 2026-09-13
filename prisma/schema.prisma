@@ -43,7 +43,7 @@ model Room {
   number       String        @unique
   status       RoomStatus    @default(AVAILABLE)
   inventories  Json?
-  tenant       Tenant?
+  tenants      Tenant[]
   transactions Transaction[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -53,7 +53,7 @@ model Tenant {
   id           String        @id @default(auto()) @map("_id") @db.ObjectId
   name         String
   phone        String
-  roomId       String        @unique @db.ObjectId
+  roomId       String        @db.ObjectId
   room         Room          @relation(fields: [roomId], references: [id])
   status       TenantStatus  @default(ACTIVE)
   dateIn       DateTime      @default(now())

@@ -133,6 +133,10 @@ export default function PenghuniPage() {
 
     startTransition(async () => {
       const result = await addTenant(formData);
+      if (result && (result as any).success === false) {
+        alert((result as any).message || "Gagal menambah penghuni");
+        return;
+      }
       setNewName("");
       setNewRoom("");
       setNewPhone("");

@@ -182,7 +182,7 @@ export async function getRooms() {
   try {
     return await prisma.room.findMany({
       include: {
-        tenant: true,
+        tenants: true,
       },
       orderBy: {
         number: "asc",
@@ -336,15 +336,21 @@ export async function addTenant(formData: FormData) {
         },
       });
     } else {
+      const tenantCount = await prisma.tenant.count({
+        where: { roomId: room.id },
+      });
+      if (tenantCount >= 2) {
+        return { success: false, message: `Kamar ${roomNumber} sudah penuh (maksimal 2 orang).` };
+      }
+
       await prisma.room.update({
         where: { id: room.id },
         data: { status: "OCCUPIED" },
       });
     }
 
-    const newTenant = await prisma.tenant.upsert({
-      where: { roomId: room.id },
-      create: {
+    const newTenant = await prisma.tenant.create({
+      data: {
         name,
         phone,
         roomId: room.id,
@@ -354,22 +360,13 @@ export async function addTenant(formData: FormData) {
         rentType: rentType as any,
         rentAmount,
       },
-      update: {
-        name,
-        phone,
-        status: "ACTIVE",
-        dateIn,
-        dateDue,
-        rentType: rentType as any,
-        rentAmount,
-      },
     });
 
     revalidatePath("/penghuni");
-    return newTenant;
-  } catch (error) {
+    return { success: true, tenant: newTenant };
+  } catch (error: any) {
     console.error("Error in addTenant:", error);
-    return null;
+    return { success: false, message: error?.message || "Gagal menambah penghuni" };
   }
 }
 
@@ -435,12 +432,12 @@ export async function updateTenant(formData: FormData) {
             data: { number: roomNumber, status: "OCCUPIED" },
           });
         } else {
-          // Cek apakah kamar tujuan sudah dihuni oleh orang lain
-          const occupier = await prisma.tenant.findUnique({
+          // Cek apakah kamar tujuan sudah penuh
+          const tenantCount = await prisma.tenant.count({
             where: { roomId: newRoom.id },
           });
-          if (occupier && occupier.id !== existingTenant.id) {
-            return { success: false, message: `Kamar ${roomNumber} sudah dihuni oleh ${occupier.name}.` };
+          if (tenantCount >= 2) {
+            return { success: false, message: `Kamar ${roomNumber} sudah penuh (maksimal 2 orang).` };
           }
           await prisma.room.update({
             where: { id: newRoom.id },
@@ -448,12 +445,17 @@ export async function updateTenant(formData: FormData) {
           });
         }
 
-        // Kembalikan status kamar lama menjadi AVAILABLE
+        // Kembalikan status kamar lama menjadi AVAILABLE jika kosong
         if (existingTenant.roomId && existingTenant.roomId !== newRoom.id) {
-          await prisma.room.update({
-            where: { id: existingTenant.roomId },
-            data: { status: "AVAILABLE" },
+          const remainingOldTenants = await prisma.tenant.count({
+            where: { roomId: existingTenant.roomId, id: { not: existingTenant.id } },
           });
+          if (remainingOldTenants === 0) {
+            await prisma.room.update({
+              where: { id: existingTenant.roomId },
+              data: { status: "AVAILABLE" },
+            });
+          }
         }
 
         targetRoomId = newRoom.id;
@@ -528,31 +530,42 @@ export async function importTenantsBulk(tenantsData: any[]) {
       };
     });
 
-    // 2. Dekode data unik per nomor kamar (mencegah bentrok E11000 duplicate key pada roomId_1)
-    const tenantByRoomMap = new Map<string, (typeof preparedList)[0]>();
+    // 2. Kelompokkan data per nomor kamar (maksimal 2 per kamar dari Excel)
+    const tenantsByRoom = new Map<string, (typeof preparedList)[0][]>();
     preparedList.forEach((item) => {
-      tenantByRoomMap.set(item.roomNumber, item);
+      const list = tenantsByRoom.get(item.roomNumber) || [];
+      if (list.length < 2) {
+        list.push(item);
+        tenantsByRoom.set(item.roomNumber, list);
+      }
     });
-    const uniqueTenants = Array.from(tenantByRoomMap.values());
-    const uniqueRoomNumbers = Array.from(tenantByRoomMap.keys());
+    
+    const uniqueTenants = Array.from(tenantsByRoom.values()).flat();
+    const uniqueRoomNumbers = Array.from(tenantsByRoom.keys());
 
     // 3. Ambil kamar yang sudah ada
     const existingRooms = await prisma.room.findMany({
       where: { number: { in: uniqueRoomNumbers } },
+      include: { tenants: true }
     });
 
     const roomMap = new Map<string, string>();
-    existingRooms.forEach((r) => roomMap.set(r.number, r.id));
+    const roomTenantsMap = new Map<string, any[]>();
+    existingRooms.forEach((r) => {
+      roomMap.set(r.number, r.id);
+      roomTenantsMap.set(r.id, r.tenants || []);
+    });
 
     // 4. Buat kamar baru untuk yang belum ada di database
     const missingRoomNumbers = uniqueRoomNumbers.filter((num) => !roomMap.has(num));
     for (const num of missingRoomNumbers) {
-      const newRoom = await prisma.room.upsert({
-        where: { number: num },
-        create: { number: num, status: "OCCUPIED" },
-        update: { status: "OCCUPIED" },
-      });
+      // Find again to be absolutely sure to prevent race conditions
+      let newRoom = await prisma.room.findFirst({ where: { number: num } });
+      if (!newRoom) {
+        newRoom = await prisma.room.create({ data: { number: num, status: "OCCUPIED" } });
+      }
       roomMap.set(num, newRoom.id);
+      roomTenantsMap.set(newRoom.id, []);
     }
 
     // 5. Update status seluruh kamar yang sudah ada menjadi OCCUPIED
@@ -564,17 +577,43 @@ export async function importTenantsBulk(tenantsData: any[]) {
       });
     }
 
-    // 6. Eksekusi upsert seluruh data penghuni secara paralel (batch 10)
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < uniqueTenants.length; i += BATCH_SIZE) {
-      const batch = uniqueTenants.slice(i, i + BATCH_SIZE);
-      await Promise.all(
-        batch.map((item) => {
-          const roomId = roomMap.get(item.roomNumber);
-          if (!roomId) return Promise.resolve();
-          return prisma.tenant.upsert({
-            where: { roomId },
-            create: {
+    // 6. Eksekusi proses tenant satu per satu untuk memastikan batas maksimal 2 orang per kamar
+    let successCount = 0;
+    for (const item of uniqueTenants) {
+      const roomId = roomMap.get(item.roomNumber);
+      if (!roomId) continue;
+
+      const currentTenants = roomTenantsMap.get(roomId) || [];
+      
+      // Cari apakah tenant ini sudah ada di kamar yang sama (berdasarkan nama atau nomor telepon)
+      const existingTenant = currentTenants.find(t => 
+        t.name.toLowerCase() === item.name.toLowerCase() || 
+        (t.phone !== "-" && t.phone === item.phone)
+      );
+
+      if (existingTenant) {
+        // Update data jika sudah ada
+        const updated = await prisma.tenant.update({
+          where: { id: existingTenant.id },
+          data: {
+            name: item.name,
+            phone: item.phone,
+            status: "ACTIVE",
+            dateIn: item.dateIn,
+            dateDue: item.dateDue,
+            rentType: item.rentType as any,
+            rentAmount: item.rentAmount,
+          }
+        });
+        // Perbarui cache lokal
+        const index = currentTenants.findIndex(t => t.id === existingTenant.id);
+        if (index !== -1) currentTenants[index] = updated;
+        successCount++;
+      } else {
+        // Jika belum ada, cek apakah kamar masih muat (kurang dari 2)
+        if (currentTenants.length < 2) {
+          const created = await prisma.tenant.create({
+            data: {
               name: item.name,
               phone: item.phone,
               roomId,
@@ -583,23 +622,16 @@ export async function importTenantsBulk(tenantsData: any[]) {
               dateDue: item.dateDue,
               rentType: item.rentType as any,
               rentAmount: item.rentAmount,
-            },
-            update: {
-              name: item.name,
-              phone: item.phone,
-              status: "ACTIVE",
-              dateIn: item.dateIn,
-              dateDue: item.dateDue,
-              rentType: item.rentType as any,
-              rentAmount: item.rentAmount,
-            },
+            }
           });
-        })
-      );
+          currentTenants.push(created);
+          successCount++;
+        }
+      }
     }
 
     revalidatePath("/penghuni");
-    return { success: true, count: uniqueTenants.length };
+    return { success: true, count: successCount };
   } catch (error: any) {
     console.error("Error in importTenantsBulk:", error);
     return {
@@ -632,10 +664,16 @@ export async function deleteTenant(tenantId: string) {
         where: { id: tenantId },
       });
 
-      await prisma.room.update({
-        where: { id: tenant.roomId },
-        data: { status: "AVAILABLE" },
+      const remainingTenants = await prisma.tenant.count({
+        where: { roomId: tenant.roomId },
       });
+
+      if (remainingTenants === 0) {
+        await prisma.room.update({
+          where: { id: tenant.roomId },
+          data: { status: "AVAILABLE" },
+        });
+      }
     }
 
     revalidatePath("/penghuni");

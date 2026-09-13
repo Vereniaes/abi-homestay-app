@@ -25,7 +25,7 @@ interface Room {
   number: string;
   status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
   inventories: any;
-  tenant?: Tenant | null;
+  tenants?: Tenant[];
 }
 
 const INVENTORY_ITEMS = [
@@ -136,7 +136,7 @@ function KamarContent() {
     if (hasDamage) {
       newStatus = "MAINTENANCE";
     } else if (selectedRoom.status === "MAINTENANCE") {
-      newStatus = selectedRoom.tenant ? "OCCUPIED" : "AVAILABLE";
+      newStatus = selectedRoom.tenants && selectedRoom.tenants.length > 0 ? "OCCUPIED" : "AVAILABLE";
     }
 
     startTransition(async () => {
@@ -212,6 +212,11 @@ function KamarContent() {
               stateClass = "state-maintenance";
               iconBg = "bg-[#F59E0B]/10 text-[#D97706]";
               iconName = "build";
+            } else if (room.status === "OCCUPIED") {
+              stateClass = "state-occupied";
+              iconBg = "bg-primary-container text-primary";
+              const tenantCount = room.tenants ? room.tenants.length : 0;
+              iconName = tenantCount >= 2 ? "group" : "person";
             }
 
             const isAboveFold = idx < 12;
@@ -282,23 +287,32 @@ function KamarContent() {
 
             <div className="p-md overflow-y-auto no-scrollbar flex-1 space-y-6">
               {/* Tenant Info (Conditional) */}
-              {selectedRoom.tenant && (
+              {selectedRoom.tenants && selectedRoom.tenants.length > 0 && (
                 <div>
                   <h3 className="font-label-md text-label-md text-on-surface-variant mb-3">
                     Informasi Penghuni
                   </h3>
-                  <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/20 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-secondary-container text-secondary flex items-center justify-center font-headline-md">
-                      <span className="material-symbols-outlined">person</span>
-                    </div>
-                    <div>
-                      <p className="font-body-md text-body-md text-primary font-semibold">
-                        {selectedRoom.tenant.name}
-                      </p>
-                      <p className="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
-                        {selectedRoom.tenant.phone}
-                      </p>
-                    </div>
+                  <div className="flex flex-col gap-3">
+                    {selectedRoom.tenants.map((tenant, idx) => (
+                      <div key={tenant.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/20 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-secondary-container text-secondary flex items-center justify-center font-headline-md shrink-0">
+                          <span className="material-symbols-outlined">person</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <p className="font-body-md text-body-md text-primary font-semibold truncate">
+                              {tenant.name}
+                            </p>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface-variant text-on-surface-variant shrink-0">
+                              Penghuni {idx + 1}
+                            </span>
+                          </div>
+                          <p className="font-label-sm text-label-sm text-on-surface-variant truncate">
+                            {tenant.phone}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
