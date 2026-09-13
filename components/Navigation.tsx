@@ -112,16 +112,17 @@ export default function Navigation() {
     { label: "Beranda", href: "/", icon: "home" },
     { label: "Kamar", href: "/kamar", icon: "bed" },
     { label: "Penghuni", href: "/penghuni", icon: "group" },
-    { label: "Pengaturan", href: "/pengaturan", icon: "settings" },
   ];
 
   const adminNavItems = [
     { label: "Laporan", href: "/laporan", icon: "analytics" },
   ];
 
+  const settingsItem = { label: "Pengaturan", href: "/pengaturan", icon: "settings" };
+
   const navItems = currentUser?.role === "ADMIN"
-    ? [...baseNavItems, ...adminNavItems]
-    : baseNavItems;
+    ? [...baseNavItems, ...adminNavItems, settingsItem]
+    : [...baseNavItems, settingsItem];
 
   const getTitle = () => {
     switch (pathname) {
