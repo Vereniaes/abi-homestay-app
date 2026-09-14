@@ -30,9 +30,13 @@ export async function getDashboardStats() {
       prisma.room.count({ where: { status: "AVAILABLE" } }),
       prisma.room.count({ where: { status: "MAINTENANCE" } }),
       prisma.tenant.findMany({
-        where: { status: "EXPIRING_SOON" },
+        where: {
+          status: { not: "INACTIVE" },
+          dateDue: { lte: new Date(new Date().setDate(new Date().getDate() + 7)) },
+        },
         include: { room: true },
         take: 5,
+        orderBy: { dateDue: 'asc' },
       }),
       prisma.room.findMany({
         where: { status: "MAINTENANCE" },
@@ -143,9 +147,13 @@ export async function getNotificationAlerts() {
   try {
     const [dueTenants, maintenanceRooms] = await Promise.all([
       prisma.tenant.findMany({
-        where: { status: "EXPIRING_SOON" },
+        where: {
+          status: { not: "INACTIVE" },
+          dateDue: { lte: new Date(new Date().setDate(new Date().getDate() + 7)) },
+        },
         include: { room: true },
         take: 10,
+        orderBy: { dateDue: 'asc' },
       }),
       prisma.room.findMany({
         where: { status: "MAINTENANCE" },
