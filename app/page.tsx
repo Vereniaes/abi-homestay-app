@@ -1,7 +1,7 @@
 import { getDashboardStats } from "./actions";
 import HomeDashboardClient from "@/components/HomeDashboardClient";
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 // helper --------------------------------------------------------------------------
 // function Halaman Utama Beranda (Server Component)
