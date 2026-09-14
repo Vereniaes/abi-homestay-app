@@ -223,7 +223,9 @@ function KamarContent() {
               iconName = "build";
             } else if (actualStatus === "OCCUPIED") {
               stateClass = "state-occupied";
-              iconBg = "bg-primary-container text-primary";
+              iconBg = tenantCount === 1 
+                ? "bg-secondary-container/40 text-secondary" 
+                : "bg-primary-container text-white dark:bg-slate-700 dark:text-slate-200";
               iconName = tenantCount >= 2 ? "group" : "person";
             }
 
