@@ -3,14 +3,18 @@ const prisma = new PrismaClient();
 
 async function main() {
   try {
-    const rooms = await prisma.room.findMany();
-    console.log(`Found ${rooms.length} rooms`);
-    console.log(rooms.slice(0, 2));
+    const total = await prisma.room.count();
+    console.log("Total rooms:", total);
+    
+    // Check if Tenant status "EXPIRING_SOON" is valid
+    const due = await prisma.tenant.findMany({
+      where: { status: "EXPIRING_SOON" }
+    });
+    console.log("Due tenants:", due.length);
   } catch (e) {
     console.error(e);
   } finally {
     await prisma.$disconnect();
   }
 }
-
 main();
