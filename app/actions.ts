@@ -70,7 +70,8 @@ export async function getDashboardStats() {
     const now = new Date();
     const monthlyTrends = [];
 
-    for (let i = 4; i >= 0; i--) {
+    // Hanya tampilkan bulan berjalan (data historis dihapus karena dummy)
+    for (let i = 0; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const mIndex = d.getMonth();
       const year = d.getFullYear();

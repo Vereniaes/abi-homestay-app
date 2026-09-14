@@ -282,14 +282,14 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
               </div>
             </div>
 
-            {/* Dynamic Rolling 5-Month Bar Chart */}
+            {/* Dynamic Current Month Bar Chart */}
             <div className="mt-6 pt-6 border-t border-surface-container-high">
               <div className="flex items-center justify-between mb-4">
                 <p className="font-label-sm font-semibold text-primary">
-                  Trend Okupansi 5 Bulan Terakhir
+                  Okupansi Bulan Ini
                 </p>
-                <span className="text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-md border border-outline-variant/20">
-                  Data Historis
+                <span className="text-[11px] text-brand-teal bg-teal-500/10 px-2 py-0.5 rounded-md border border-brand-teal/20">
+                  Data Aktif
                 </span>
               </div>
 
