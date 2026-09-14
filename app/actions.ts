@@ -122,18 +122,12 @@ export async function getDashboardStats() {
   } catch (error) {
     console.error("Error in getDashboardStats:", error);
     return {
-      totalRooms: 58,
-      occupiedCount: 33,
-      availableCount: 25,
+      totalRooms: 0,
+      occupiedCount: 0,
+      availableCount: 0,
       maintenanceCount: 0,
-      occupancyRate: 57,
-      monthlyTrends: [
-        { month: "Mei", fullMonth: "Mei 2026", rate: 50, occupied: 29, total: 58, isCurrentMonth: false },
-        { month: "Jun", fullMonth: "Juni 2026", rate: 52, occupied: 30, total: 58, isCurrentMonth: false },
-        { month: "Jul", fullMonth: "Juli 2026", rate: 53, occupied: 31, total: 58, isCurrentMonth: false },
-        { month: "Agu", fullMonth: "Agustus 2026", rate: 55, occupied: 32, total: 58, isCurrentMonth: false },
-        { month: "Sep", fullMonth: "September 2026", rate: 57, occupied: 33, total: 58, isCurrentMonth: true },
-      ],
+      occupancyRate: 0,
+      monthlyTrends: [],
       dueTenants: [],
       maintenanceRoomsList: [],
     };

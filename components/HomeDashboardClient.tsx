@@ -155,21 +155,8 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                 </div>
               ))
             ) : (
-              <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-brand-amber animate-slide-up stagger-2 micro-glow-amber">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-tertiary-fixed rounded-full text-brand-amber">
-                    <span className="material-symbols-outlined" data-icon="payments">
-                      payments
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-label-md text-primary">Kamar 12</p>
-                    <p className="font-label-sm text-on-surface-variant">H-3 Jatuh Tempo</p>
-                  </div>
-                </div>
-                <button className="px-3 py-1 bg-surface-container rounded-lg font-label-sm text-primary hover:bg-surface-variant transition-all duration-300 active:scale-95">
-                  Ingatkan
-                </button>
+              <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-center border-l-4 border-brand-teal animate-slide-up stagger-2">
+                <p className="font-label-md text-on-surface-variant text-center">Tidak ada penyewa yang akan jatuh tempo dalam waktu dekat.</p>
               </div>
             )}
 
@@ -307,16 +294,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
               </div>
 
               <div className="flex justify-between items-end h-28 px-1 sm:px-3 pt-4">
-                {(stats.monthlyTrends && stats.monthlyTrends.length > 0
-                  ? stats.monthlyTrends
-                  : [
-                      { month: "Mei", fullMonth: "Mei 2026", rate: 50, occupied: 29, total: 58, isCurrentMonth: false },
-                      { month: "Jun", fullMonth: "Juni 2026", rate: 52, occupied: 30, total: 58, isCurrentMonth: false },
-                      { month: "Jul", fullMonth: "Juli 2026", rate: 53, occupied: 31, total: 58, isCurrentMonth: false },
-                      { month: "Agu", fullMonth: "Agustus 2026", rate: 55, occupied: 32, total: 58, isCurrentMonth: false },
-                      { month: "Sep", fullMonth: "September 2026", rate: 57, occupied: 33, total: 58, isCurrentMonth: true },
-                    ]
-                ).map((trend, idx) => (
+                {(stats.monthlyTrends || []).map((trend, idx) => (
                   <div key={`${trend.month}-${idx}`} className="group relative flex flex-col items-center flex-1 h-full justify-end">
                     {/* Tooltip Hover Bubble */}
                     <div className="absolute -top-9 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-20 bg-primary text-on-primary text-[10px] font-medium py-1 px-2 rounded-md shadow-lg whitespace-nowrap -translate-y-1 group-hover:translate-y-0">
