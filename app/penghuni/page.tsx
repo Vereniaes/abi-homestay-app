@@ -27,7 +27,6 @@ interface Tenant {
   status: "ACTIVE" | "EXPIRING_SOON" | "INACTIVE";
   dateIn: Date;
   dateDue: Date | null;
-  email?: string | null;
   rentType: string;
   rentAmount: number;
 }
@@ -57,7 +56,6 @@ export default function PenghuniPage() {
   const [newName, setNewName] = useState("");
   const [newRoom, setNewRoom] = useState("");
   const [newPhone, setNewPhone] = useState("");
-  const [newEmail, setNewEmail] = useState("");
   const [newDateIn, setNewDateIn] = useState("");
   const [newRentType, setNewRentType] = useState("MONTHLY");
 
@@ -69,7 +67,6 @@ export default function PenghuniPage() {
   const [editName, setEditName] = useState("");
   const [editRoom, setEditRoom] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editEmail, setEditEmail] = useState("");
   const [editRentType, setEditRentType] = useState("MONTHLY");
   const [editDateDue, setEditDateDue] = useState("");
   const [editError, setEditError] = useState("");
@@ -131,7 +128,6 @@ export default function PenghuniPage() {
     formData.append("name", newName);
     formData.append("roomNumber", newRoom);
     formData.append("phone", formatPhoneDisplay(newPhone));
-    formData.append("email", newEmail);
     formData.append("dateIn", newDateIn);
     formData.append("rentType", newRentType);
 
@@ -144,7 +140,6 @@ export default function PenghuniPage() {
       setNewName("");
       setNewRoom("");
       setNewPhone("");
-      setNewEmail("");
       setNewDateIn(new Date().toISOString().split("T")[0]);
       setNewRentType("MONTHLY");
       setIsAddOpen(false);
@@ -179,7 +174,6 @@ export default function PenghuniPage() {
     setEditRoom(tenant.room?.number || "");
     const cleanedPhone = tenant.phone && tenant.phone !== "-" ? tenant.phone.replace(/^\+62\s?/, "").replace(/[^0-9]/g, "") : "";
     setEditPhone(cleanedPhone);
-    setEditEmail(tenant.email || "");
     setEditRentType(tenant.rentType || "MONTHLY");
     setEditDateDue(
       tenant.dateDue ? new Date(tenant.dateDue).toISOString().split("T")[0] : ""
@@ -212,7 +206,6 @@ export default function PenghuniPage() {
     formData.append("name", editName);
     formData.append("roomNumber", editRoom);
     formData.append("phone", formatPhoneDisplay(editPhone));
-    formData.append("email", editEmail);
     formData.append("rentType", editRentType);
     formData.append("dateDue", editDateDue);
 
@@ -387,7 +380,10 @@ export default function PenghuniPage() {
 
       {/* Profile Details Modal */}
       {selectedTenant && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
+        <div 
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedTenant(null) }}
+        >
           <div
             onClick={() => setSelectedTenant(null)}
             className="fixed inset-0 bg-black/50 transition-opacity"
@@ -494,7 +490,10 @@ export default function PenghuniPage() {
 
       {/* Add Tenant Modal */}
       {isAddOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
+        <div 
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setIsAddOpen(false) }}
+        >
           <div
             onClick={() => setIsAddOpen(false)}
             className="fixed inset-0 bg-black/50 transition-opacity"
@@ -552,17 +551,6 @@ export default function PenghuniPage() {
                       placeholder="8xx-xxxx-xxxx"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="font-label-sm text-on-surface-variant mb-1 block">Email (Opsional)</label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md"
-                    placeholder="Alamat Email (untuk notifikasi)"
-                  />
                 </div>
 
                 <div>
@@ -636,7 +624,10 @@ export default function PenghuniPage() {
 
       {/* Edit & Extend Tenant Modal */}
       {isEditOpen && (
-        <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-4">
+        <div 
+          className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setIsEditOpen(false) }}
+        >
           <div
             onClick={() => setIsEditOpen(false)}
             className="fixed inset-0 bg-black/50 transition-opacity"
@@ -732,19 +723,6 @@ export default function PenghuniPage() {
                       className="w-full px-4 py-3 bg-transparent outline-none text-body-md font-body-md"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
-                    Email (Opsional)
-                  </label>
-                  <input
-                    type="email"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md"
-                    placeholder="Alamat Email (untuk notifikasi)"
-                  />
                 </div>
 
                 <div className="bg-secondary-container/20 border border-secondary/30 rounded-2xl p-4">

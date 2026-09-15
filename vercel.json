@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/due-notif",
-      "schedule": "0 1 * * *"
-    }
-  ]
-}

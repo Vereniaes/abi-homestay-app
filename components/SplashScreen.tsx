@@ -34,7 +34,7 @@ export default function SplashScreen() {
   return (
     <div
       style={{ opacity, transition: "opacity 700ms ease" }}
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-brand-deep-blue"
+      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-brand-deep-blue ${opacity === 0 ? 'pointer-events-none' : ''}`}
     >
       <div className="flex flex-col items-center animate-pulse">
         <div className="w-20 h-20 bg-brand-teal rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(13,148,136,0.4)] mb-4">

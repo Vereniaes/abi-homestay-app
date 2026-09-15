@@ -121,6 +121,7 @@ export default function Navigation() {
 
   const adminNavItems = [
     { label: "Laporan", href: "/laporan", icon: "analytics" },
+    { label: "User", href: "/users", icon: "manage_accounts" },
   ];
 
   const settingsItem = { label: "Pengaturan", href: "/pengaturan", icon: "settings" };
@@ -303,7 +304,7 @@ export default function Navigation() {
   return (
     <>
       {/* TopAppBar (Mobile & Tablet) */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 py-2.5 bg-surface-container-lowest border-b border-outline-variant/20 shadow-sm transition-colors duration-200 md:hidden">
+      <header className="fixed top-0 left-0 w-full z-[60] flex justify-between items-center px-4 py-2.5 bg-surface-container-lowest/95 backdrop-blur-md border-b border-outline-variant/20 shadow-sm transition-colors duration-200 md:hidden">
         <div className="flex items-center gap-sm overflow-hidden mr-2">
           <div className="overflow-hidden">
             <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight truncate">
@@ -395,28 +396,7 @@ export default function Navigation() {
             );
           })}
 
-          {currentUser?.role === "ADMIN" && (
-            <>
-              <div className="mt-4 mb-2 px-4">
-                <span className="text-[10px] font-bold text-outline tracking-widest uppercase">
-                  Administrator
-                </span>
-              </div>
-              <Link
-                href="/users"
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  pathname === "/users"
-                    ? "text-on-primary bg-primary font-semibold shadow-md"
-                    : "text-on-surface-variant hover:bg-surface-variant/50"
-                }`}
-              >
-                <span className="material-symbols-outlined" style={pathname === "/users" ? { fontVariationSettings: "'FILL' 1" } : {}}>
-                  manage_accounts
-                </span>
-                <span className="font-label-md text-label-md">Manajemen User</span>
-              </Link>
-            </>
-          )}
+
         </nav>
 
         {/* User Profile Box Footer */}

@@ -303,7 +303,10 @@ export default function PengaturanPage() {
 
       {/* Modal Popup: Master Harga Sewa */}
       {activeSheet === "PRICE" && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
+        <div 
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveSheet(null) }}
+        >
           <div
             onClick={() => setActiveSheet(null)}
             className="fixed inset-0 bg-black/50 transition-opacity"
@@ -436,7 +439,10 @@ export default function PengaturanPage() {
 
       {/* Modal Popup: Fasilitas & Inventaris */}
       {activeSheet === "FACILITIES" && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
+        <div 
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveSheet(null) }}
+        >
           <div
             onClick={() => setActiveSheet(null)}
             className="fixed inset-0 bg-black/50 transition-opacity"
@@ -477,7 +483,10 @@ export default function PengaturanPage() {
 
       {/* Modal Popup: Pusat Bantuan */}
       {activeSheet === "HELP" && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
+        <div 
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveSheet(null) }}
+        >
           <div
             onClick={() => setActiveSheet(null)}
             className="fixed inset-0 bg-black/50 transition-opacity"

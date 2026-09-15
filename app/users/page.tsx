@@ -262,7 +262,10 @@ export default function UsersPage() {
 
       {/* Add/Edit User Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
+        <div 
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false) }}
+        >
           <div
             onClick={() => setIsModalOpen(false)}
             className="fixed inset-0 bg-black/50 transition-opacity"

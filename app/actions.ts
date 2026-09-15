@@ -322,7 +322,6 @@ export async function addTenant(formData: FormData) {
     const roomNumberRaw = (formData.get("roomNumber") as string) || "";
     const dateInRaw = formData.get("dateIn") as string;
     const rentType = (formData.get("rentType") as string) || "MONTHLY";
-    const email = (formData.get("email") as string) || null;
 
     const dateIn = dateInRaw ? new Date(dateInRaw) : new Date();
     const dateDue = calculateDueDate(dateIn, rentType);
@@ -366,7 +365,6 @@ export async function addTenant(formData: FormData) {
         status: "ACTIVE",
         dateIn,
         dateDue,
-        email,
         rentType: rentType as any,
         rentAmount,
       },
@@ -413,7 +411,6 @@ export async function updateTenant(formData: FormData) {
     const roomNumberRaw = formData.get("roomNumber") as string;
     const rentType = (formData.get("rentType") as string) || existingTenant.rentType;
     const dateDueRaw = formData.get("dateDue") as string;
-    const email = formData.has("email") ? (formData.get("email") as string) : existingTenant.email;
 
     let dateDue = existingTenant.dateDue;
     if (dateDueRaw) {
@@ -478,7 +475,6 @@ export async function updateTenant(formData: FormData) {
       data: {
         name,
         phone,
-        email,
         roomId: targetRoomId,
         rentType: rentType as any,
         rentAmount,

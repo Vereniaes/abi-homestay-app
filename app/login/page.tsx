@@ -23,10 +23,25 @@ export default function LoginPage() {
   // input param : user (string), pass (string)
   // output : void (mengeset state username & password)
   // end of helper ------------------------------------------------------------------
-  const handlePresetSelect = (user: string, pass: string) => {
+  const handlePresetSelect = async (user: string, pass: string) => {
     setUsername(user);
     setPassword(pass);
     setErrorMsg("");
+    setIsLoading(true);
+
+    const formData = new FormData();
+    formData.append("username", user);
+    formData.append("password", pass);
+
+    const result = await loginUser(formData);
+    setIsLoading(false);
+
+    if (result.success) {
+      clearClientCache();
+      window.location.href = "/";
+    } else {
+      setErrorMsg(result.message || "Username atau password salah.");
+    }
   };
 
   // helper --------------------------------------------------------------------------
