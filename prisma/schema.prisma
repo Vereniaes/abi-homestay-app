@@ -58,6 +58,8 @@ model Tenant {
   status       TenantStatus  @default(ACTIVE)
   dateIn       DateTime      @default(now())
   dateDue      DateTime?
+  email        String?
+  lastNotifiedAt DateTime?
   rentType     RentType      @default(MONTHLY)
   rentAmount   Float         @default(2500000)
   imageUrl     String?
