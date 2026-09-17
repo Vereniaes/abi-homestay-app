@@ -18,31 +18,7 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // helper --------------------------------------------------------------------------
-  // function untuk memuat preset akun pengujian (admin, edit, view)
-  // input param : user (string), pass (string)
-  // output : void (mengeset state username & password)
-  // end of helper ------------------------------------------------------------------
-  const handlePresetSelect = async (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setErrorMsg("");
-    setIsLoading(true);
 
-    const formData = new FormData();
-    formData.append("username", user);
-    formData.append("password", pass);
-
-    const result = await loginUser(formData);
-    setIsLoading(false);
-
-    if (result.success) {
-      clearClientCache();
-      window.location.href = "/";
-    } else {
-      setErrorMsg(result.message || "Username atau password salah.");
-    }
-  };
 
   // helper --------------------------------------------------------------------------
   // function untuk menangani submisi form login
@@ -176,38 +152,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Quick Demo Preset Account Badges */}
-        <div className="mt-8 pt-6 border-t border-outline-variant/30">
-          <p className="text-label-sm text-outline text-center mb-3 font-medium">
-            Atau pilih akun pengujian bawaan:
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handlePresetSelect("admin", "admin123")}
-              className="py-2 px-2 bg-secondary-container/20 hover:bg-secondary-container/40 border border-secondary/20 rounded-xl flex flex-col items-center transition-all scale-on-press"
-            >
-              <span className="text-label-sm font-bold text-secondary">ADMIN</span>
-              <span className="text-[10px] text-on-surface-variant font-mono">admin123</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetSelect("edit", "edit123")}
-              className="py-2 px-2 bg-primary-fixed/20 hover:bg-primary-fixed/40 border border-primary-fixed-dim/30 rounded-xl flex flex-col items-center transition-all scale-on-press"
-            >
-              <span className="text-label-sm font-bold text-on-primary-fixed-variant">EDIT</span>
-              <span className="text-[10px] text-on-surface-variant font-mono">edit123</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetSelect("view", "view123")}
-              className="py-2 px-2 bg-surface-container-high hover:bg-surface-variant border border-outline-variant/40 rounded-xl flex flex-col items-center transition-all scale-on-press"
-            >
-              <span className="text-label-sm font-bold text-outline">VIEW</span>
-              <span className="text-[10px] text-on-surface-variant font-mono">view123</span>
-            </button>
-          </div>
-        </div>
+
       </div>
     </main>
   );
