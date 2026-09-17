@@ -48,11 +48,23 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
   const vacantPercent = Math.round((stats.availableCount / total) * 100);
   const maintenancePercent = Math.max(0, 100 - occupiedPercent - vacantPercent);
 
-  // Financial Period Filter States
+  // Financial Period Filter States (Mendukung 5 siklus: Harian, Mingguan, Bulanan, 6 Bulan, Tahunan)
   const now = new Date();
-  const [filterMode, setFilterMode] = useState<"MONTH" | "YEAR">("MONTH");
+  const [filterMode, setFilterMode] = useState<"DAILY" | "WEEKLY" | "MONTHLY" | "SEMESTERLY" | "YEARLY">("MONTHLY");
+  const [selectedDailyDate, setSelectedDailyDate] = useState<string>(() => {
+    return new Date().toISOString().split("T")[0];
+  });
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
+  const [selectedWeek, setSelectedWeek] = useState<number>(() => {
+    const d = now.getDate();
+    if (d <= 7) return 1;
+    if (d <= 14) return 2;
+    if (d <= 21) return 3;
+    if (d <= 28) return 4;
+    return 5;
+  });
+  const [selectedSemester, setSelectedSemester] = useState<1 | 2>(() => (now.getMonth() < 6 ? 1 : 2));
 
   // Dynamic Year Options (2024 to current year + 2)
   const availableYears = useMemo(() => {
@@ -64,17 +76,46 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
     return years;
   }, [now]);
 
-  // Financial Computations based on filter
+  // Financial Computations based on the 5 filter cycles
   const financialData = useMemo(() => {
     const txs = stats.financialTransactions || [];
 
-    // Filter current selected period
+    // 1. Filter current selected period transactions
     const currentPeriodTxs = txs.filter((tx) => {
       const d = new Date(tx.date);
-      if (filterMode === "MONTH") {
-        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const dateNum = d.getDate();
+
+      if (filterMode === "DAILY") {
+        const targetD = new Date(selectedDailyDate);
+        return (
+          y === targetD.getFullYear() &&
+          m === targetD.getMonth() &&
+          dateNum === targetD.getDate()
+        );
       }
-      return d.getFullYear() === selectedYear;
+
+      if (filterMode === "WEEKLY") {
+        if (y !== selectedYear || m !== selectedMonth) return false;
+        if (selectedWeek === 1) return dateNum >= 1 && dateNum <= 7;
+        if (selectedWeek === 2) return dateNum >= 8 && dateNum <= 14;
+        if (selectedWeek === 3) return dateNum >= 15 && dateNum <= 21;
+        if (selectedWeek === 4) return dateNum >= 22 && dateNum <= 28;
+        return dateNum >= 29;
+      }
+
+      if (filterMode === "MONTHLY") {
+        return y === selectedYear && m === selectedMonth;
+      }
+
+      if (filterMode === "SEMESTERLY") {
+        if (y !== selectedYear) return false;
+        return selectedSemester === 1 ? m >= 0 && m <= 5 : m >= 6 && m <= 11;
+      }
+
+      // YEARLY
+      return y === selectedYear;
     });
 
     const income = currentPeriodTxs
@@ -88,9 +129,46 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
     const netProfit = income - expense;
     const profitMargin = income > 0 ? Math.round(((income - expense) / income) * 100) : (expense > 0 ? -100 : 0);
 
-    // Calculate previous period for comparison
+    // 2. Calculate previous period for comparison & growth rate
     let prevIncome = 0;
-    if (filterMode === "MONTH") {
+    if (filterMode === "DAILY") {
+      const targetD = new Date(selectedDailyDate);
+      targetD.setDate(targetD.getDate() - 1);
+      prevIncome = txs
+        .filter((tx) => {
+          const d = new Date(tx.date);
+          return (
+            d.getFullYear() === targetD.getFullYear() &&
+            d.getMonth() === targetD.getMonth() &&
+            d.getDate() === targetD.getDate() &&
+            tx.type === "INCOME"
+          );
+        })
+        .reduce((acc, curr) => acc + curr.amount, 0);
+    } else if (filterMode === "WEEKLY") {
+      let prevW = selectedWeek - 1;
+      let prevM = selectedMonth;
+      let prevY = selectedYear;
+      if (prevW < 1) {
+        prevW = 4;
+        prevM = selectedMonth === 0 ? 11 : selectedMonth - 1;
+        prevY = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+      }
+      prevIncome = txs
+        .filter((tx) => {
+          const d = new Date(tx.date);
+          const y = d.getFullYear();
+          const m = d.getMonth();
+          const dateNum = d.getDate();
+          if (y !== prevY || m !== prevM || tx.type !== "INCOME") return false;
+          if (prevW === 1) return dateNum >= 1 && dateNum <= 7;
+          if (prevW === 2) return dateNum >= 8 && dateNum <= 14;
+          if (prevW === 3) return dateNum >= 15 && dateNum <= 21;
+          if (prevW === 4) return dateNum >= 22 && dateNum <= 28;
+          return dateNum >= 29;
+        })
+        .reduce((acc, curr) => acc + curr.amount, 0);
+    } else if (filterMode === "MONTHLY") {
       const prevM = selectedMonth === 0 ? 11 : selectedMonth - 1;
       const prevY = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
       prevIncome = txs
@@ -99,7 +177,20 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           return d.getFullYear() === prevY && d.getMonth() === prevM && tx.type === "INCOME";
         })
         .reduce((acc, curr) => acc + curr.amount, 0);
+    } else if (filterMode === "SEMESTERLY") {
+      const prevSem = selectedSemester === 1 ? 2 : 1;
+      const prevY = selectedSemester === 1 ? selectedYear - 1 : selectedYear;
+      prevIncome = txs
+        .filter((tx) => {
+          const d = new Date(tx.date);
+          const y = d.getFullYear();
+          const m = d.getMonth();
+          if (y !== prevY || tx.type !== "INCOME") return false;
+          return prevSem === 1 ? m >= 0 && m <= 5 : m >= 6 && m <= 11;
+        })
+        .reduce((acc, curr) => acc + curr.amount, 0);
     } else {
+      // YEARLY
       const prevY = selectedYear - 1;
       prevIncome = txs
         .filter((tx) => {
@@ -129,14 +220,41 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
       expenseRatio,
       txCount: currentPeriodTxs.length,
     };
-  }, [stats.financialTransactions, filterMode, selectedYear, selectedMonth]);
+  }, [
+    stats.financialTransactions,
+    filterMode,
+    selectedDailyDate,
+    selectedYear,
+    selectedMonth,
+    selectedWeek,
+    selectedSemester,
+  ]);
 
   const periodLabel = useMemo(() => {
-    if (filterMode === "MONTH") {
+    if (filterMode === "DAILY") {
+      const d = new Date(selectedDailyDate);
+      return !isNaN(d.getTime())
+        ? d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" })
+        : selectedDailyDate;
+    }
+    if (filterMode === "WEEKLY") {
+      const weekRanges = [
+        "Tgl 1 - 7",
+        "Tgl 8 - 14",
+        "Tgl 15 - 21",
+        "Tgl 22 - 28",
+        "Tgl 29 - Akhir",
+      ];
+      return `Minggu ke-${selectedWeek} (${weekRanges[selectedWeek - 1]}), ${MONTH_NAMES_ID[selectedMonth]} ${selectedYear}`;
+    }
+    if (filterMode === "MONTHLY") {
       return `${MONTH_NAMES_ID[selectedMonth]} ${selectedYear}`;
     }
+    if (filterMode === "SEMESTERLY") {
+      return `Semester ${selectedSemester} (${selectedSemester === 1 ? "Jan - Jun" : "Jul - Des"}) ${selectedYear}`;
+    }
     return `Tahun ${selectedYear}`;
-  }, [filterMode, selectedMonth, selectedYear]);
+  }, [filterMode, selectedDailyDate, selectedWeek, selectedMonth, selectedSemester, selectedYear]);
 
   return (
     <>
@@ -265,7 +383,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           </div>
         </section>
 
-        {/* 3. Laporan Keuangan Persentase & Ringkasan Section (FITUR BARU) */}
+        {/* 3. Laporan Keuangan Persentase & Ringkasan Section (Mendukung 5 Siklus Sewa) */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -286,61 +404,168 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           </div>
 
           <div className="bg-surface-container-lowest rounded-2xl p-5 sm:p-6 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] border border-outline-variant/20 animate-slide-up stagger-3">
-            {/* Period Filter Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-outline-variant/20">
-              {/* Mode Switcher */}
-              <div className="flex bg-surface-container-low rounded-xl p-1 border border-outline-variant/30">
-                <button
-                  type="button"
-                  onClick={() => setFilterMode("MONTH")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    filterMode === "MONTH"
-                      ? "bg-brand-teal text-white shadow-sm"
-                      : "text-on-surface-variant hover:text-primary"
-                  }`}
-                >
-                  Per Bulan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterMode("YEAR")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    filterMode === "YEAR"
-                      ? "bg-brand-teal text-white shadow-sm"
-                      : "text-on-surface-variant hover:text-primary"
-                  }`}
-                >
-                  Per Tahun
-                </button>
+            {/* Period Filter Controls: 5 Siklus */}
+            <div className="space-y-3 pb-4 mb-5 border-b border-outline-variant/20">
+              {/* Mode Switcher Chips (Harian, Mingguan, Bulanan, 6 Bulan, Tahunan) */}
+              <div className="flex overflow-x-auto hide-scrollbar gap-1.5 p-1 bg-surface-container-low rounded-xl border border-outline-variant/30">
+                {[
+                  { key: "DAILY", label: "Harian" },
+                  { key: "WEEKLY", label: "Mingguan" },
+                  { key: "MONTHLY", label: "Bulanan" },
+                  { key: "SEMESTERLY", label: "6 Bulan" },
+                  { key: "YEARLY", label: "Tahunan" },
+                ].map((item) => {
+                  const isActive = filterMode === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setFilterMode(item.key as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+                        isActive
+                          ? "bg-brand-teal text-white shadow-sm"
+                          : "text-on-surface-variant hover:text-primary"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Month / Year Selectors */}
-              <div className="flex items-center gap-2">
-                {filterMode === "MONTH" && (
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                    className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
-                  >
-                    {MONTH_NAMES_ID.map((name, idx) => (
-                      <option key={name} value={idx}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
+              {/* Dynamic Parameter Selectors */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {/* 1. Harian Selector */}
+                {filterMode === "DAILY" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="date"
+                      value={selectedDailyDate}
+                      onChange={(e) => setSelectedDailyDate(e.target.value)}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDailyDate(new Date().toISOString().split("T")[0])}
+                      className="px-2.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-variant text-[11px] font-bold text-on-surface-variant transition-colors"
+                    >
+                      Hari Ini
+                    </button>
+                  </div>
                 )}
 
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
-                >
-                  {availableYears.map((yr) => (
-                    <option key={yr} value={yr}>
-                      {yr}
-                    </option>
-                  ))}
-                </select>
+                {/* 2. Mingguan Selector */}
+                {filterMode === "WEEKLY" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={selectedWeek}
+                      onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      <option value={1}>Minggu 1 (Tgl 1 - 7)</option>
+                      <option value={2}>Minggu 2 (Tgl 8 - 14)</option>
+                      <option value={3}>Minggu 3 (Tgl 15 - 21)</option>
+                      <option value={4}>Minggu 4 (Tgl 22 - 28)</option>
+                      <option value={5}>Minggu 5 (Tgl 29 - Akhir)</option>
+                    </select>
+
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      {MONTH_NAMES_ID.map((name, idx) => (
+                        <option key={name} value={idx}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      {availableYears.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 3. Bulanan Selector */}
+                {filterMode === "MONTHLY" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      {MONTH_NAMES_ID.map((name, idx) => (
+                        <option key={name} value={idx}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      {availableYears.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 4. Semester (6 Bulan) Selector */}
+                {filterMode === "SEMESTERLY" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={selectedSemester}
+                      onChange={(e) => setSelectedSemester(Number(e.target.value) as 1 | 2)}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      <option value={1}>Semester 1 (Januari - Juni)</option>
+                      <option value={2}>Semester 2 (Juli - Desember)</option>
+                    </select>
+
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      {availableYears.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 5. Tahunan Selector */}
+                {filterMode === "YEARLY" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                    >
+                      {availableYears.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -358,7 +583,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                   <p className="text-xl sm:text-2xl font-bold text-brand-teal">
                     <AnimatedCounter target={financialData.income} formatCurrency={true} />
                   </p>
-                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                  <p className="text-[11px] text-on-surface-variant mt-0.5 truncate font-medium" title={periodLabel}>
                     {periodLabel}
                   </p>
                 </div>
@@ -394,7 +619,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                   <p className={`text-xl sm:text-2xl font-bold ${financialData.netProfit >= 0 ? "text-brand-teal" : "text-error"}`}>
                     <AnimatedCounter target={financialData.netProfit} formatCurrency={true} />
                   </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${financialData.profitMargin >= 0 ? "bg-teal-500/10 text-brand-teal" : "bg-error/10 text-error"}`}>
                       {financialData.profitMargin}% Margin
                     </span>
