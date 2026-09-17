@@ -1,4 +1,4 @@
-import { getDashboardStats } from "./actions";
+import { getDashboardStats, getCurrentUser } from "./actions";
 import HomeDashboardClient from "@/components/HomeDashboardClient";
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +11,9 @@ export const fetchCache = 'force-no-store';
 // output : React Server Component JSX
 // end of helper ------------------------------------------------------------------
 export default async function HomePage() {
-  const stats = await getDashboardStats();
-  return <HomeDashboardClient stats={stats} />;
+  const [stats, user] = await Promise.all([
+    getDashboardStats(),
+    getCurrentUser(),
+  ]);
+  return <HomeDashboardClient stats={stats} userRole={user?.role} />;
 }

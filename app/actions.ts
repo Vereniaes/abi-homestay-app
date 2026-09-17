@@ -17,20 +17,18 @@ export async function getDashboardStats() {
   try {
     const [
       totalRooms,
-      occupiedCount,
       maintenanceCount,
+      occupiedCount,
+      availableCount,
       dueTenants,
       maintenanceRoomsList,
       tenants,
       transactions,
     ] = await Promise.all([
       prisma.room.count(),
-      prisma.room.count({ 
-        where: { 
-          tenants: { some: { status: { not: "INACTIVE" } } } 
-        } 
-      }),
       prisma.room.count({ where: { status: "MAINTENANCE" } }),
+      prisma.room.count({ where: { status: "OCCUPIED" } }),
+      prisma.room.count({ where: { status: "AVAILABLE" } }),
       prisma.tenant.findMany({
         where: {
           status: { not: "INACTIVE" },
@@ -52,9 +50,6 @@ export async function getDashboardStats() {
         orderBy: { date: "desc" },
       }),
     ]);
-
-    // Calculate available rooms dynamically to ensure it perfectly matches the real occupancy
-    const availableCount = Math.max(0, totalRooms - occupiedCount - maintenanceCount);
 
     const occupancyRate = totalRooms > 0 ? Math.round((occupiedCount / totalRooms) * 100) : 0;
 

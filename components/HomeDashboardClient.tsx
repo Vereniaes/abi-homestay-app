@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import AnimatedCounter from "./AnimatedCounter";
 import { getWhatsAppUrl } from "@/lib/phone";
+import { getCurrentUser } from "@/app/actions";
+import { getClientCache, setClientCache } from "@/lib/client-cache";
 
 interface MonthlyTrend {
   month: string;
@@ -42,11 +44,36 @@ const MONTH_NAMES_ID = [
 // input param : stats (DashboardStats)
 // output : React Client Component JSX
 // end of helper ------------------------------------------------------------------
-export default function HomeDashboardClient({ stats }: { stats: DashboardStats }) {
+export default function HomeDashboardClient({ 
+  stats, 
+  userRole 
+}: { 
+  stats: DashboardStats; 
+  userRole?: string; 
+}) {
+  const [currentRole, setCurrentRole] = useState<string | undefined>(() => {
+    if (userRole) return userRole;
+    const cachedUser = getClientCache<{ role: string }>("currentUser");
+    return cachedUser?.role;
+  });
+
+  useEffect(() => {
+    if (!currentRole) {
+      getCurrentUser().then((user) => {
+        if (user) {
+          setCurrentRole(user.role);
+          setClientCache("currentUser", user);
+        }
+      });
+    }
+  }, [currentRole]);
+
+  const isAdmin = currentRole === "ADMIN";
+
   const total = stats.totalRooms || (stats.occupiedCount + stats.availableCount + stats.maintenanceCount) || 1;
   const occupiedPercent = Math.round((stats.occupiedCount / total) * 100);
   const vacantPercent = Math.round((stats.availableCount / total) * 100);
-  const maintenancePercent = Math.max(0, 100 - occupiedPercent - vacantPercent);
+  const maintenancePercent = Math.round((stats.maintenanceCount / total) * 100);
 
   // Financial Period Filter States (Mendukung 5 siklus: Harian, Mingguan, Bulanan, 6 Bulan, Tahunan)
   const now = new Date();
@@ -394,13 +421,15 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                 Ringkasan Arus Kas &amp; Persentase Keuntungan
               </p>
             </div>
-            <Link
-              href="/laporan"
-              className="px-3 py-1.5 bg-brand-teal/10 hover:bg-brand-teal/20 text-brand-teal rounded-xl font-label-sm font-bold flex items-center gap-1 transition-all active:scale-95"
-            >
-              <span>Lihat Detail</span>
-              <span className="material-symbols-outlined text-xs">arrow_forward</span>
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/laporan"
+                className="px-3 py-1.5 bg-brand-teal/10 hover:bg-brand-teal/20 text-brand-teal rounded-xl font-label-sm font-bold flex items-center gap-1 transition-all active:scale-95"
+              >
+                <span>Lihat Detail</span>
+                <span className="material-symbols-outlined text-xs">arrow_forward</span>
+              </Link>
+            )}
           </div>
 
           <div className="bg-surface-container-lowest rounded-2xl p-5 sm:p-6 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] border border-outline-variant/20 animate-slide-up stagger-3">
