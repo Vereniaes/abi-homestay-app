@@ -27,7 +27,11 @@ export async function getDashboardStats() {
     ] = await Promise.all([
       prisma.room.count(),
       prisma.room.count({ where: { status: "MAINTENANCE" } }),
-      prisma.room.count({ where: { status: "OCCUPIED" } }),
+      prisma.room.count({ 
+        where: { 
+          tenants: { some: { status: { not: "INACTIVE" } } } 
+        } 
+      }),
       prisma.room.count({ where: { status: "AVAILABLE" } }),
       prisma.tenant.findMany({
         where: {

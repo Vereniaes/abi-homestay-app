@@ -718,21 +718,25 @@ export default function HomeDashboardClient({
           </h2>
           <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] animate-slide-up stagger-4">
             <div className="flex flex-col items-center">
-              {/* SVG Donut Chart */}
-              <div className="relative w-44 h-44 mb-6">
-                <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
-                  {/* Background Track */}
-                  <path
+              {/* SVG Dual-Ring Donut Chart */}
+              <div className="relative w-48 h-48 mb-6">
+                <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 38 38">
+                  {/* 1. Outer Track: Okupansi Background */}
+                  <circle
+                    cx="19"
+                    cy="19"
+                    r="15.9155"
                     className="text-surface-container stroke-current"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     strokeWidth="3.2"
                   />
-                  {/* Segment: Terisi */}
+                  {/* Outer Segment: Terisi (Teal) */}
                   {occupiedPercent > 0 && (
-                    <path
+                    <circle
+                      cx="19"
+                      cy="19"
+                      r="15.9155"
                       className="text-brand-teal stroke-current donut-segment transition-all duration-700 ease-out"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       strokeDasharray={`${occupiedPercent}, 100`}
                       strokeDashoffset="0"
                       fill="none"
@@ -740,38 +744,60 @@ export default function HomeDashboardClient({
                       strokeLinecap="round"
                     />
                   )}
-                  {/* Segment: Kosong */}
+                  {/* Outer Segment: Kosong (Amber) */}
                   {vacantPercent > 0 && (
-                    <path
+                    <circle
+                      cx="19"
+                      cy="19"
+                      r="15.9155"
                       className="text-brand-amber stroke-current donut-segment transition-all duration-700 ease-out"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       strokeDasharray={`${vacantPercent}, 100`}
                       strokeDashoffset={`-${occupiedPercent}`}
-                      fill="none"
-                      strokeWidth="3.4"
-                      strokeLinecap={maintenancePercent === 0 ? "round" : "butt"}
-                    />
-                  )}
-                  {/* Segment: Perbaikan */}
-                  {maintenancePercent > 0 && (
-                    <path
-                      className="text-error stroke-current donut-segment transition-all duration-700 ease-out"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      strokeDasharray={`${maintenancePercent}, 100`}
-                      strokeDashoffset={`-${occupiedPercent + vacantPercent}`}
                       fill="none"
                       strokeWidth="3.4"
                       strokeLinecap="round"
                     />
                   )}
+
+                  {/* 2. Inner Track: Perbaikan / Pemeliharaan */}
+                  <circle
+                    cx="19"
+                    cy="19"
+                    r="11.5"
+                    className="text-error/15 stroke-current"
+                    fill="none"
+                    strokeWidth="2.4"
+                  />
+                  {/* Inner Segment: Perbaikan (Red/Rose) */}
+                  {maintenancePercent > 0 && (
+                    <circle
+                      cx="19"
+                      cy="19"
+                      r="11.5"
+                      className="text-error stroke-current donut-segment transition-all duration-700 ease-out"
+                      strokeDasharray={`${(maintenancePercent / 100) * 72.25}, 72.25`}
+                      strokeDashoffset="0"
+                      fill="none"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                    />
+                  )}
                 </svg>
+
+                {/* Center Content */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-3xl font-extrabold text-brand-deep-blue font-headline-lg tracking-tight">
                     <AnimatedCounter target={stats.occupancyRate} />%
                   </span>
-                  <span className="font-label-sm text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mt-0.5">
+                  <span className="font-label-sm text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
                     Okupansi
                   </span>
+                  {stats.maintenanceCount > 0 && (
+                    <span className="text-[10px] text-error font-extrabold flex items-center gap-1 mt-1 bg-error/10 px-2.5 py-0.5 rounded-full border border-error/20 backdrop-blur-sm shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+                      {stats.maintenanceCount} Perbaikan
+                    </span>
+                  )}
                 </div>
               </div>
 
