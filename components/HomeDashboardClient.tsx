@@ -71,9 +71,14 @@ export default function HomeDashboardClient({
   const isAdmin = currentRole === "ADMIN";
 
   const total = stats.totalRooms || (stats.occupiedCount + stats.availableCount + stats.maintenanceCount) || 1;
-  const occupiedPercent = Math.round((stats.occupiedCount / total) * 100);
-  const vacantPercent = Math.round((stats.availableCount / total) * 100);
-  const maintenancePercent = Math.round((stats.maintenanceCount / total) * 100);
+  const occupiedPercent = total > 0 ? Math.round((stats.occupiedCount / total) * 100) : 0;
+  const vacantPercent = total > 0 ? Math.round((stats.availableCount / total) * 100) : 0;
+  const maintenancePercent = total > 0 ? Math.max(0, 100 - occupiedPercent - vacantPercent) : 0;
+
+  // Exact floating percentages for gapless SVG donut rendering
+  const pOccupied = total > 0 ? (stats.occupiedCount / total) * 100 : 0;
+  const pVacant = total > 0 ? (stats.availableCount / total) * 100 : 0;
+  const pMaintenance = total > 0 ? Math.max(0, 100 - pOccupied - pVacant) : 0;
 
   // Financial Period Filter States (Mendukung 5 siklus: Harian, Mingguan, Bulanan, 6 Bulan, Tahunan)
   const now = new Date();
@@ -718,37 +723,29 @@ export default function HomeDashboardClient({
           </h2>
           <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] animate-slide-up stagger-4">
             <div className="flex flex-col items-center">
-              {/* SVG Unified 3-Segment Donut Chart */}
+              {/* SVG Unified 3-Segment Donut Chart (Tanpa Celah Abu-Abu) */}
               <div className="relative w-44 h-44 mb-6">
                 <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
-                  {/* Background Track */}
-                  <path
-                    className="text-surface-container stroke-current"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    strokeWidth="3.4"
-                  />
-
                   {/* Segment 1: Terisi (Teal) */}
-                  {occupiedPercent > 0 && (
+                  {pOccupied > 0 && (
                     <path
                       className="text-brand-teal stroke-current donut-segment transition-all duration-700 ease-out"
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      strokeDasharray={`${occupiedPercent}, 100`}
+                      strokeDasharray={`${pOccupied} ${100 - pOccupied}`}
                       strokeDashoffset="0"
                       fill="none"
                       strokeWidth="3.6"
-                      strokeLinecap={vacantPercent === 0 && maintenancePercent === 0 ? "round" : "butt"}
+                      strokeLinecap="butt"
                     />
                   )}
 
                   {/* Segment 2: Kosong (Amber) */}
-                  {vacantPercent > 0 && (
+                  {pVacant > 0 && (
                     <path
                       className="text-brand-amber stroke-current donut-segment transition-all duration-700 ease-out"
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      strokeDasharray={`${vacantPercent}, 100`}
-                      strokeDashoffset={`-${occupiedPercent}`}
+                      strokeDasharray={`${pVacant} ${100 - pVacant}`}
+                      strokeDashoffset={`-${pOccupied}`}
                       fill="none"
                       strokeWidth="3.6"
                       strokeLinecap="butt"
@@ -756,12 +753,12 @@ export default function HomeDashboardClient({
                   )}
 
                   {/* Segment 3: Perbaikan (Coral / Red) */}
-                  {maintenancePercent > 0 && (
+                  {pMaintenance > 0 && (
                     <path
                       className="text-error stroke-current donut-segment transition-all duration-700 ease-out"
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      strokeDasharray={`${maintenancePercent}, 100`}
-                      strokeDashoffset={`-${occupiedPercent + vacantPercent}`}
+                      strokeDasharray={`${pMaintenance} ${100 - pMaintenance}`}
+                      strokeDashoffset={`-${pOccupied + pVacant}`}
                       fill="none"
                       strokeWidth="3.6"
                       strokeLinecap="butt"
