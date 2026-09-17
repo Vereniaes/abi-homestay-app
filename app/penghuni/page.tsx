@@ -78,6 +78,37 @@ export default function PenghuniPage() {
   const [reactivateRentType, setReactivateRentType] = useState("MONTHLY");
   const [reactivateError, setReactivateError] = useState("");
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  const totalPages = Math.ceil(tenants.length / itemsPerPage) || 1;
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedTenants = useMemo(() => {
+    const start = (validCurrentPage - 1) * itemsPerPage;
+    return tenants.slice(start, start + itemsPerPage);
+  }, [tenants, validCurrentPage, itemsPerPage]);
+
+  const visiblePages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (validCurrentPage <= 3) {
+      return [1, 2, 3, 4, 5];
+    }
+    if (validCurrentPage >= totalPages - 2) {
+      return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [
+      validCurrentPage - 2,
+      validCurrentPage - 1,
+      validCurrentPage,
+      validCurrentPage + 1,
+      validCurrentPage + 2,
+    ];
+  }, [totalPages, validCurrentPage]);
+
   const calculatedDueDatePreview = useMemo(() => {
     if (!newDateIn) return null;
     const d = new Date(newDateIn);
@@ -106,6 +137,7 @@ export default function PenghuniPage() {
   }, [search]);
 
   useEffect(() => {
+    setCurrentPage(1);
     if (!debouncedSearch && filter === "semua") {
       const cached = getClientCache<Tenant[]>("tenants");
       if (cached && cached.length > 0 && !isCacheStale("tenants", 45000)) {
@@ -364,66 +396,132 @@ export default function PenghuniPage() {
 
       {/* Tenant List */}
       <div className="space-y-4">
-        {tenants.map((t, idx) => {
-          const isExpiring = t.status === "EXPIRING_SOON";
-          const isInactive = t.status === "INACTIVE";
+        {paginatedTenants.length === 0 ? (
+          <div className="p-8 text-center bg-surface-container-low rounded-2xl border border-surface-variant text-on-surface-variant">
+            <span className="material-symbols-outlined text-4xl text-outline mb-2">person_off</span>
+            <p className="font-semibold text-body-md text-primary">Tidak Ada Data Penghuni</p>
+            <p className="text-label-sm text-outline mt-1">Coba sesuaikan kata kunci pencarian atau filter status.</p>
+          </div>
+        ) : (
+          paginatedTenants.map((t, idx) => {
+            const isExpiring = t.status === "EXPIRING_SOON";
+            const isInactive = t.status === "INACTIVE";
 
-          return (
-            <div
-              key={t.id}
-              onClick={() => setSelectedTenant(t)}
-              className={`lazy-card tenant-card swipe-action-wrapper shadow-[0px_4px_20px_rgba(15,23,42,0.05)] rounded-2xl bg-surface-container-low gpu-accelerate transition-colors`}
-            >
-              <div className="swipe-content p-4 rounded-2xl flex items-center gap-4 cursor-pointer">
-                <div className="relative w-14 h-14 shrink-0 bg-surface-variant rounded-full flex items-center justify-center">
-                  <span className="material-symbols-outlined text-outline text-2xl">
-                    {isInactive ? "person_off" : "person"}
-                  </span>
-                  <div
-                    className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-surface ${
-                      isExpiring
-                        ? "bg-error animate-pulse-soft"
+            return (
+              <div
+                key={t.id}
+                onClick={() => setSelectedTenant(t)}
+                className={`lazy-card tenant-card swipe-action-wrapper shadow-[0px_4px_20px_rgba(15,23,42,0.05)] rounded-2xl bg-surface-container-low gpu-accelerate transition-colors`}
+              >
+                <div className="swipe-content p-4 rounded-2xl flex items-center gap-4 cursor-pointer">
+                  <div className="relative w-14 h-14 shrink-0 bg-surface-variant rounded-full flex items-center justify-center">
+                    <span className="material-symbols-outlined text-outline text-2xl">
+                      {isInactive ? "person_off" : "person"}
+                    </span>
+                    <div
+                      className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-surface ${
+                        isExpiring
+                          ? "bg-error animate-pulse-soft"
+                          : isInactive
+                          ? "bg-outline"
+                          : "bg-[#25D366]"
+                      }`}
+                    ></div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-headline-md text-body-lg text-primary truncate">
+                      {t.name}
+                    </h3>
+                    <p className="font-body-md text-label-sm text-on-surface-variant truncate">
+                      {t.phone}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    <span className="px-2 py-1 bg-surface-container rounded-md font-label-sm text-label-sm text-primary font-semibold">
+                      Kamar {t.room?.number || "--"}
+                    </span>
+                    <span
+                      className={`font-label-sm text-[10px] font-bold tracking-wider uppercase ${
+                        isExpiring
+                          ? "text-error"
+                          : isInactive
+                          ? "text-outline"
+                          : "text-brand-teal"
+                      }`}
+                    >
+                      {isExpiring
+                        ? "Akan Jatuh Tempo"
                         : isInactive
-                        ? "bg-outline"
-                        : "bg-[#25D366]"
-                    }`}
-                  ></div>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-headline-md text-body-lg text-primary truncate">
-                    {t.name}
-                  </h3>
-                  <p className="font-body-md text-label-sm text-on-surface-variant truncate">
-                    {t.phone}
-                  </p>
-                </div>
-
-                <div className="shrink-0 flex flex-col items-end gap-1">
-                  <span className="px-2 py-1 bg-surface-container rounded-md font-label-sm text-label-sm text-primary">
-                    Kamar {t.room?.number || "--"}
-                  </span>
-                  <span
-                    className={`font-label-sm text-[10px] font-bold tracking-wider uppercase ${
-                      isExpiring
-                        ? "text-error"
-                        : isInactive
-                        ? "text-outline"
-                        : "text-outline"
-                    }`}
-                  >
-                    {isExpiring
-                      ? "Akan Jatuh Tempo"
-                      : isInactive
-                      ? "Non-aktif"
-                      : "Aktif"}
-                  </span>
+                        ? "Non-aktif"
+                        : "Aktif"}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
+
+      {/* Pagination Controls */}
+      {tenants.length > itemsPerPage && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 pb-2 px-1 text-on-surface-variant">
+          <span className="text-label-sm text-outline">
+            Menampilkan {Math.min((validCurrentPage - 1) * itemsPerPage + 1, tenants.length)}-
+            {Math.min(validCurrentPage * itemsPerPage, tenants.length)} dari {tenants.length} penghuni
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentPage((p) => Math.max(1, p - 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={validCurrentPage <= 1}
+              aria-label="Halaman sebelumnya"
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-surface-variant bg-surface text-on-surface disabled:opacity-30 disabled:pointer-events-none hover:bg-surface-container-lowest transition-colors active:scale-95 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+
+            <div className="flex items-center gap-1">
+              {visiblePages.map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => {
+                    setCurrentPage(pageNum);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`w-8 h-8 rounded-xl text-label-sm font-semibold transition-all flex items-center justify-center cursor-pointer ${
+                    validCurrentPage === pageNum
+                      ? "bg-brand-teal text-white shadow-sm"
+                      : "bg-surface hover:bg-surface-container-lowest text-on-surface-variant border border-surface-variant"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentPage((p) => Math.min(totalPages, p + 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={validCurrentPage >= totalPages}
+              aria-label="Halaman selanjutnya"
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-surface-variant bg-surface text-on-surface disabled:opacity-30 disabled:pointer-events-none hover:bg-surface-container-lowest transition-colors active:scale-95 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Floating Action Button */}
       {!isViewOnly && (
