@@ -39,6 +39,11 @@ interface Transaction {
   room?: { number: string } | null;
 }
 
+const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+
 // helper --------------------------------------------------------------------------
 // function Halaman Laporan Keuangan & Tagihan dengan SWR Client Caching
 // input param : none
@@ -145,11 +150,80 @@ export default function LaporanPage() {
     }
   };
 
-  const totalRevenue = useMemo(() => {
-    return transactions
-      .filter((t) => t.type === "INCOME")
-      .reduce((acc, curr) => acc + curr.amount, 0);
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([now.getFullYear()]);
+    transactions.forEach((tx) => {
+      const yr = new Date(tx.date).getFullYear();
+      if (!isNaN(yr)) years.add(yr);
+    });
+    return Array.from(years).sort((a, b) => b - a);
   }, [transactions]);
+
+  const monthlyFinancialSummary = useMemo(() => {
+    // Pendapatan bulan terpilih (INCOME only)
+    const currentMonthIncome = transactions
+      .filter((t) => {
+        if (t.type !== "INCOME") return false;
+        const d = new Date(t.date);
+        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+      })
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+    // Pendapatan bulan sebelumnya
+    const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+    const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+
+    const previousMonthIncome = transactions
+      .filter((t) => {
+        if (t.type !== "INCOME") return false;
+        const d = new Date(t.date);
+        return d.getFullYear() === prevYear && d.getMonth() === prevMonth;
+      })
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+    // Hitung persentase pertumbuhan dinamis vs bulan lalu
+    let growthPercent = 0;
+    let isPositive = false;
+    let isNegative = false;
+    let isNeutral = false;
+
+    if (previousMonthIncome === 0) {
+      if (currentMonthIncome > 0) {
+        growthPercent = 100;
+        isPositive = true;
+      } else {
+        growthPercent = 0;
+        isNeutral = true;
+      }
+    } else {
+      const diff = currentMonthIncome - previousMonthIncome;
+      growthPercent = parseFloat(((diff / previousMonthIncome) * 100).toFixed(1));
+      if (growthPercent > 0) isPositive = true;
+      else if (growthPercent < 0) isNegative = true;
+      else isNeutral = true;
+    }
+
+    const isCurrentMonth = selectedMonth === now.getMonth() && selectedYear === now.getFullYear();
+    const periodLabel = isCurrentMonth
+      ? "Bulan Ini"
+      : `${MONTH_NAMES_ID[selectedMonth]} ${selectedYear}`;
+
+    return {
+      currentMonthIncome,
+      previousMonthIncome,
+      growthPercent,
+      isPositive,
+      isNegative,
+      isNeutral,
+      periodLabel,
+      isCurrentMonth,
+      prevPeriodLabel: `${MONTH_NAMES_ID[prevMonth]} ${prevYear}`,
+    };
+  }, [transactions, selectedMonth, selectedYear]);
 
   const toggleAccordion = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -264,22 +338,84 @@ export default function LaporanPage() {
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#0D9488] rounded-full blur-[80px] opacity-20"></div>
 
           <div className="relative z-10">
-            <p className="text-white/70 text-label-md uppercase tracking-widest mb-2 font-semibold">
-              Pendapatan Bulan Ini
-            </p>
+            {/* Header: Title & Month/Year Filter Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <p className="text-white/70 text-label-md uppercase tracking-widest font-semibold">
+                {monthlyFinancialSummary.isCurrentMonth
+                  ? "Pendapatan Bulan Ini"
+                  : `Pendapatan ${monthlyFinancialSummary.periodLabel}`}
+              </p>
+
+              {/* Quick Month & Year Selector */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  className="bg-white/15 hover:bg-white/25 border border-white/20 text-white rounded-xl px-2.5 py-1 text-xs font-semibold backdrop-blur-md outline-none transition-all cursor-pointer focus:ring-2 focus:ring-brand-teal"
+                  aria-label="Pilih Bulan Laporan"
+                >
+                  {MONTH_NAMES_ID.map((name, idx) => (
+                    <option key={name} value={idx} className="bg-slate-900 text-white">
+                      {name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-white/15 hover:bg-white/25 border border-white/20 text-white rounded-xl px-2.5 py-1 text-xs font-semibold backdrop-blur-md outline-none transition-all cursor-pointer focus:ring-2 focus:ring-brand-teal"
+                  aria-label="Pilih Tahun Laporan"
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr} className="bg-slate-900 text-white">
+                      {yr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Income Nominal */}
             <div className="flex items-baseline gap-2">
               <span className="text-white/90 text-body-lg font-bold">Rp</span>
               {isLoading ? (
                 <div className="h-12 w-48 rounded-xl skeleton-shimmer my-1 opacity-60"></div>
               ) : (
                 <h2 className="text-white text-3xl sm:text-4xl md:text-[44px] leading-tight font-extrabold tracking-tight animate-slide-up drop-shadow-sm">
-                  <AnimatedCounter target={totalRevenue} formatCurrency={true} />
+                  <AnimatedCounter target={monthlyFinancialSummary.currentMonthIncome} formatCurrency={true} />
                 </h2>
               )}
             </div>
-            <div className="mt-5 flex items-center gap-2 text-[#6bd8cb] bg-[#6bd8cb]/10 w-fit px-3 py-1.5 rounded-full border border-[#6bd8cb]/20 backdrop-blur-sm">
-              <span className="material-symbols-outlined text-[16px]">trending_up</span>
-              <span className="text-label-sm font-bold">+12.5% vs bulan lalu</span>
+
+            {/* Dynamic Comparison / Growth Badge */}
+            <div className="mt-5 flex items-center gap-2 flex-wrap">
+              {monthlyFinancialSummary.isPositive ? (
+                <div className="flex items-center gap-1.5 text-teal-300 bg-teal-500/20 px-3 py-1.5 rounded-full border border-teal-400/30 backdrop-blur-sm shadow-sm animate-fade-in">
+                  <span className="material-symbols-outlined text-[16px] font-bold">trending_up</span>
+                  <span className="text-label-sm font-bold">
+                    +{monthlyFinancialSummary.growthPercent}% vs bulan lalu
+                  </span>
+                </div>
+              ) : monthlyFinancialSummary.isNegative ? (
+                <div className="flex items-center gap-1.5 text-rose-300 bg-rose-500/20 px-3 py-1.5 rounded-full border border-rose-400/30 backdrop-blur-sm shadow-sm animate-fade-in">
+                  <span className="material-symbols-outlined text-[16px] font-bold">trending_down</span>
+                  <span className="text-label-sm font-bold">
+                    {monthlyFinancialSummary.growthPercent}% vs bulan lalu
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-slate-300 bg-slate-500/20 px-3 py-1.5 rounded-full border border-slate-400/30 backdrop-blur-sm shadow-sm animate-fade-in">
+                  <span className="material-symbols-outlined text-[16px]">trending_flat</span>
+                  <span className="text-label-sm font-bold">
+                    0.0% vs bulan lalu
+                  </span>
+                </div>
+              )}
+
+              <span className="text-white/50 text-[11px] font-medium hidden sm:inline-block">
+                (Bulan lalu: Rp {monthlyFinancialSummary.previousMonthIncome.toLocaleString("id-ID")})
+              </span>
             </div>
           </div>
         </div>
