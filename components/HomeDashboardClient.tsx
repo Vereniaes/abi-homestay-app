@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import AnimatedCounter from "./AnimatedCounter";
 import { getWhatsAppUrl } from "@/lib/phone";
@@ -13,6 +14,12 @@ interface MonthlyTrend {
   isCurrentMonth: boolean;
 }
 
+interface FinancialTransaction {
+  date: string | Date;
+  amount: number;
+  type: "INCOME" | "EXPENSE";
+}
+
 interface DashboardStats {
   totalRooms: number;
   occupiedCount: number;
@@ -22,7 +29,13 @@ interface DashboardStats {
   monthlyTrends?: MonthlyTrend[];
   dueTenants: any[];
   maintenanceRoomsList: any[];
+  financialTransactions?: FinancialTransaction[];
 }
+
+const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
 
 // helper --------------------------------------------------------------------------
 // function HomeDashboardClient untuk merender UI Beranda secara dinamis dan kaya animasi
@@ -34,6 +47,96 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
   const occupiedPercent = Math.round((stats.occupiedCount / total) * 100);
   const vacantPercent = Math.round((stats.availableCount / total) * 100);
   const maintenancePercent = Math.max(0, 100 - occupiedPercent - vacantPercent);
+
+  // Financial Period Filter States
+  const now = new Date();
+  const [filterMode, setFilterMode] = useState<"MONTH" | "YEAR">("MONTH");
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
+
+  // Dynamic Year Options (2024 to current year + 2)
+  const availableYears = useMemo(() => {
+    const currentYr = now.getFullYear();
+    const years = [];
+    for (let y = 2024; y <= Math.max(currentYr + 1, 2026); y++) {
+      years.push(y);
+    }
+    return years;
+  }, [now]);
+
+  // Financial Computations based on filter
+  const financialData = useMemo(() => {
+    const txs = stats.financialTransactions || [];
+
+    // Filter current selected period
+    const currentPeriodTxs = txs.filter((tx) => {
+      const d = new Date(tx.date);
+      if (filterMode === "MONTH") {
+        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+      }
+      return d.getFullYear() === selectedYear;
+    });
+
+    const income = currentPeriodTxs
+      .filter((t) => t.type === "INCOME")
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+    const expense = currentPeriodTxs
+      .filter((t) => t.type === "EXPENSE")
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+    const netProfit = income - expense;
+    const profitMargin = income > 0 ? Math.round(((income - expense) / income) * 100) : (expense > 0 ? -100 : 0);
+
+    // Calculate previous period for comparison
+    let prevIncome = 0;
+    if (filterMode === "MONTH") {
+      const prevM = selectedMonth === 0 ? 11 : selectedMonth - 1;
+      const prevY = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+      prevIncome = txs
+        .filter((tx) => {
+          const d = new Date(tx.date);
+          return d.getFullYear() === prevY && d.getMonth() === prevM && tx.type === "INCOME";
+        })
+        .reduce((acc, curr) => acc + curr.amount, 0);
+    } else {
+      const prevY = selectedYear - 1;
+      prevIncome = txs
+        .filter((tx) => {
+          const d = new Date(tx.date);
+          return d.getFullYear() === prevY && tx.type === "INCOME";
+        })
+        .reduce((acc, curr) => acc + curr.amount, 0);
+    }
+
+    let growthPercent: number | null = null;
+    if (prevIncome > 0) {
+      growthPercent = Math.round(((income - prevIncome) / prevIncome) * 100);
+    }
+
+    const totalVolume = income + expense;
+    const incomeRatio = totalVolume > 0 ? Math.round((income / totalVolume) * 100) : 100;
+    const expenseRatio = totalVolume > 0 ? 100 - incomeRatio : 0;
+
+    return {
+      income,
+      expense,
+      netProfit,
+      profitMargin,
+      growthPercent,
+      prevIncome,
+      incomeRatio,
+      expenseRatio,
+      txCount: currentPeriodTxs.length,
+    };
+  }, [stats.financialTransactions, filterMode, selectedYear, selectedMonth]);
+
+  const periodLabel = useMemo(() => {
+    if (filterMode === "MONTH") {
+      return `${MONTH_NAMES_ID[selectedMonth]} ${selectedYear}`;
+    }
+    return `Tahun ${selectedYear}`;
+  }, [filterMode, selectedMonth, selectedYear]);
 
   return (
     <>
@@ -50,7 +153,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           </div>
         </div>
 
-        {/* Stat Cards Grid */}
+        {/* 1. Stat Cards Grid */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 pt-2">
           {/* Total Kamar */}
           <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] flex flex-col justify-between micro-glow-blue transition-all duration-300 hover:scale-[1.02] animate-slide-up stagger-1">
@@ -121,7 +224,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
           </div>
         </section>
 
-        {/* Jatuh Tempo & Perhatian Section */}
+        {/* 2. Jatuh Tempo & Perhatian Section (HANYA Penghuni Jatuh Tempo) */}
         <section className="mb-8">
           <h2 className="font-headline-md text-headline-md text-primary mb-4 animate-slide-up stagger-2">
             Jatuh Tempo &amp; Perhatian
@@ -140,7 +243,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                       </span>
                     </div>
                     <div>
-                      <p className="font-label-md text-primary">Kamar {tenant.room.number} - {tenant.name}</p>
+                      <p className="font-label-md text-primary font-semibold">Kamar {tenant.room.number} - {tenant.name}</p>
                       <p className="font-label-sm text-on-surface-variant">Akan Jatuh Tempo</p>
                     </div>
                   </div>
@@ -148,7 +251,7 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                     href={getWhatsAppUrl(tenant.phone)}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-3 py-1 bg-surface-container rounded-lg font-label-sm text-primary hover:bg-surface-variant transition-all duration-300 active:scale-95 inline-block"
+                    className="px-3 py-1.5 bg-surface-container rounded-lg font-label-sm text-primary font-bold hover:bg-surface-variant transition-all duration-300 active:scale-95 inline-block"
                   >
                     Ingatkan
                   </a>
@@ -159,34 +262,204 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                 <p className="font-label-md text-on-surface-variant text-center">Tidak ada penyewa yang akan jatuh tempo dalam waktu dekat.</p>
               </div>
             )}
-
-            {stats.maintenanceRoomsList.length > 0 && (
-              <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-error animate-slide-up stagger-4 micro-glow-red transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-error-container rounded-full text-error">
-                    <span className="material-symbols-outlined" data-icon="water_drop">
-                      water_drop
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-label-md text-primary">Kamar {stats.maintenanceRoomsList[0].number}</p>
-                    <p className="font-label-sm text-on-surface-variant">Laporan: AC Bocor / Perbaikan</p>
-                  </div>
-                </div>
-                <Link
-                  href={`/kamar?room=${encodeURIComponent(stats.maintenanceRoomsList[0].number)}`}
-                  className="px-3 py-1 bg-surface-container rounded-lg font-label-sm text-primary hover:bg-surface-variant transition-all duration-300 active:scale-95"
-                >
-                  Detail
-                </Link>
-              </div>
-            )}
           </div>
         </section>
 
-        {/* Status Kamar Visualization */}
+        {/* 3. Laporan Keuangan Persentase & Ringkasan Section (FITUR BARU) */}
         <section className="mb-8">
-          <h2 className="font-headline-md text-headline-md text-primary mb-4 animate-slide-up stagger-3">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-headline-md text-headline-md text-primary">
+                Laporan Keuangan
+              </h2>
+              <p className="font-label-sm text-on-surface-variant">
+                Ringkasan Arus Kas &amp; Persentase Keuntungan
+              </p>
+            </div>
+            <Link
+              href="/laporan"
+              className="px-3 py-1.5 bg-brand-teal/10 hover:bg-brand-teal/20 text-brand-teal rounded-xl font-label-sm font-bold flex items-center gap-1 transition-all active:scale-95"
+            >
+              <span>Lihat Detail</span>
+              <span className="material-symbols-outlined text-xs">arrow_forward</span>
+            </Link>
+          </div>
+
+          <div className="bg-surface-container-lowest rounded-2xl p-5 sm:p-6 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] border border-outline-variant/20 animate-slide-up stagger-3">
+            {/* Period Filter Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-outline-variant/20">
+              {/* Mode Switcher */}
+              <div className="flex bg-surface-container-low rounded-xl p-1 border border-outline-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("MONTH")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    filterMode === "MONTH"
+                      ? "bg-brand-teal text-white shadow-sm"
+                      : "text-on-surface-variant hover:text-primary"
+                  }`}
+                >
+                  Per Bulan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("YEAR")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    filterMode === "YEAR"
+                      ? "bg-brand-teal text-white shadow-sm"
+                      : "text-on-surface-variant hover:text-primary"
+                  }`}
+                >
+                  Per Tahun
+                </button>
+              </div>
+
+              {/* Month / Year Selectors */}
+              <div className="flex items-center gap-2">
+                {filterMode === "MONTH" && (
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                  >
+                    {MONTH_NAMES_ID.map((name, idx) => (
+                      <option key={name} value={idx}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-1.5 text-xs font-semibold text-primary outline-none focus:border-brand-teal transition-all"
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Financial Overview Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              {/* Total Pendapatan */}
+              <div className="p-4 rounded-xl bg-[#0D9488]/10 border border-[#0D9488]/20 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-on-surface-variant">Uang Masuk</span>
+                  <span className="p-1.5 rounded-lg bg-[#0D9488]/20 text-brand-teal">
+                    <span className="material-symbols-outlined text-sm">trending_up</span>
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xl sm:text-2xl font-bold text-brand-teal">
+                    <AnimatedCounter target={financialData.income} formatCurrency={true} />
+                  </p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                    {periodLabel}
+                  </p>
+                </div>
+              </div>
+
+              {/* Total Pengeluaran */}
+              <div className="p-4 rounded-xl bg-error-container/20 border border-error/20 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-on-surface-variant">Uang Keluar</span>
+                  <span className="p-1.5 rounded-lg bg-error-container text-error">
+                    <span className="material-symbols-outlined text-sm">trending_down</span>
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xl sm:text-2xl font-bold text-error">
+                    <AnimatedCounter target={financialData.expense} formatCurrency={true} />
+                  </p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                    Biaya operasional
+                  </p>
+                </div>
+              </div>
+
+              {/* Keuntungan Bersih */}
+              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-on-surface-variant">Sisa Kas / Bersih</span>
+                  <span className="p-1.5 rounded-lg bg-brand-deep-blue/10 text-brand-deep-blue dark:text-teal-400">
+                    <span className="material-symbols-outlined text-sm">account_balance_wallet</span>
+                  </span>
+                </div>
+                <div>
+                  <p className={`text-xl sm:text-2xl font-bold ${financialData.netProfit >= 0 ? "text-brand-teal" : "text-error"}`}>
+                    <AnimatedCounter target={financialData.netProfit} formatCurrency={true} />
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${financialData.profitMargin >= 0 ? "bg-teal-500/10 text-brand-teal" : "bg-error/10 text-error"}`}>
+                      {financialData.profitMargin}% Margin
+                    </span>
+                    {financialData.growthPercent !== null && (
+                      <span className={`text-[10px] font-bold ${financialData.growthPercent >= 0 ? "text-brand-teal" : "text-error"}`}>
+                        {financialData.growthPercent >= 0 ? `+${financialData.growthPercent}%` : `${financialData.growthPercent}%`} vs lalu
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ratio Bar */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-on-surface-variant mb-1.5">
+                <span>Rasio Aliran Dana</span>
+                <span>{financialData.incomeRatio}% Masuk vs {financialData.expenseRatio}% Keluar</span>
+              </div>
+              <div className="w-full h-3 rounded-full bg-surface-container-high overflow-hidden flex shadow-inner">
+                <div
+                  style={{ width: `${financialData.incomeRatio}%` }}
+                  className="h-full bg-gradient-to-r from-brand-teal to-[#0d9488] transition-all duration-500"
+                  title={`Uang Masuk: ${financialData.incomeRatio}%`}
+                />
+                <div
+                  style={{ width: `${financialData.expenseRatio}%` }}
+                  className="h-full bg-error transition-all duration-500"
+                  title={`Uang Keluar: ${financialData.expenseRatio}%`}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Quick Actions Row (DITUKAR: BERADA DI ATAS STATUS KAMAR) */}
+        <section className="mb-8">
+          <h2 className="font-headline-md text-headline-md text-primary mb-4 animate-slide-up stagger-4">
+            Aksi Cepat
+          </h2>
+          <div className="grid grid-cols-2 gap-4 animate-slide-up stagger-4">
+            <Link
+              href="/penghuni"
+              className="bg-gradient-to-br from-brand-teal to-[#0f766e] text-on-primary rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm transition-transform duration-200 active:scale-95 micro-glow-teal"
+            >
+              <span className="material-symbols-outlined text-3xl" data-icon="person_add">
+                person_add
+              </span>
+              <span className="font-label-md text-center">Tambah Penghuni</span>
+            </Link>
+            <Link
+              href="/laporan"
+              className="bg-gradient-to-br from-brand-deep-blue to-[#1e293b] text-on-primary rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm transition-transform duration-200 active:scale-95 micro-glow-blue"
+            >
+              <span className="material-symbols-outlined text-3xl" data-icon="request_quote">
+                request_quote
+              </span>
+              <span className="font-label-md text-center">Catat Pembayaran</span>
+            </Link>
+          </div>
+        </section>
+
+        {/* 5. Status Kamar Visualization (DITUKAR: BERADA DI PALING BAWAH HALAMAN) */}
+        <section className="mb-8">
+          <h2 className="font-headline-md text-headline-md text-primary mb-4 animate-slide-up stagger-4">
             Status Kamar
           </h2>
           <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-[0px_4px_20px_rgba(15,23,42,0.05)] animate-slide-up stagger-4">
@@ -332,33 +605,6 @@ export default function HomeDashboardClient({ stats }: { stats: DashboardStats }
                 ))}
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Quick Actions Row */}
-        <section className="mb-8">
-          <h2 className="font-headline-md text-headline-md text-primary mb-4 animate-slide-up stagger-4">
-            Aksi Cepat
-          </h2>
-          <div className="grid grid-cols-2 gap-4 animate-slide-up stagger-4">
-            <Link
-              href="/penghuni"
-              className="bg-gradient-to-br from-brand-teal to-[#0f766e] text-on-primary rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm transition-transform duration-200 active:scale-95 micro-glow-teal"
-            >
-              <span className="material-symbols-outlined text-3xl" data-icon="person_add">
-                person_add
-              </span>
-              <span className="font-label-md text-center">Tambah Penghuni</span>
-            </Link>
-            <Link
-              href="/laporan"
-              className="bg-gradient-to-br from-brand-deep-blue to-[#1e293b] text-on-primary rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm transition-transform duration-200 active:scale-95 micro-glow-blue"
-            >
-              <span className="material-symbols-outlined text-3xl" data-icon="request_quote">
-                request_quote
-              </span>
-              <span className="font-label-md text-center">Catat Pembayaran</span>
-            </Link>
           </div>
         </section>
       </main>

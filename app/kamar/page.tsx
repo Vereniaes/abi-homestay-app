@@ -217,10 +217,24 @@ function KamarContent() {
               actualStatus = "OCCUPIED";
             }
 
-            if (actualStatus === "MAINTENANCE") {
+            // Temukan seluruh inventaris yang berstatus perbaikan
+            const brokenItems = INVENTORY_ITEMS.filter((item, i) => {
+              return Array.isArray(room.inventories) && room.inventories[i] === "perbaikan";
+            });
+
+            let extraDamagedCount = 0;
+
+            if (actualStatus === "MAINTENANCE" || brokenItems.length > 0) {
+              actualStatus = "MAINTENANCE";
               stateClass = "state-maintenance";
               iconBg = "bg-[#F59E0B]/10 text-[#D97706]";
-              iconName = "build";
+              if (brokenItems.length > 0) {
+                iconName = brokenItems[0].icon;
+                extraDamagedCount = brokenItems.length > 1 ? brokenItems.length - 1 : 0;
+              } else {
+                iconName = "build";
+                extraDamagedCount = 0;
+              }
             } else if (actualStatus === "OCCUPIED") {
               stateClass = "state-occupied";
               iconBg = tenantCount === 1 
@@ -244,10 +258,17 @@ function KamarContent() {
                   {room.number}
                 </span>
 
-                <div className={`w-7 h-7 rounded-full ${iconBg} flex items-center justify-center mb-1.5`}>
-                  <span className="material-symbols-outlined text-[16px]">
-                    {iconName}
-                  </span>
+                <div className="relative mb-1.5 flex items-center justify-center">
+                  <div className={`w-7 h-7 rounded-full ${iconBg} flex items-center justify-center`}>
+                    <span className="material-symbols-outlined text-[16px]">
+                      {iconName}
+                    </span>
+                  </div>
+                  {actualStatus === "MAINTENANCE" && extraDamagedCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 bg-error text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border-2 border-surface shadow-sm leading-none flex items-center justify-center">
+                      +{extraDamagedCount}
+                    </span>
+                  )}
                 </div>
 
                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border tracking-tight ${
@@ -259,7 +280,9 @@ function KamarContent() {
                     ? "bg-secondary-container/40 text-secondary border-secondary/30"
                     : "bg-primary-container text-white dark:bg-slate-700 dark:text-slate-200 border-slate-700/40"
                 }`}>
-                  {actualStatus === "MAINTENANCE" ? "Perbaikan" : `${tenantCount}/2 ${tenantCount >= 2 ? "Penuh" : "Orang"}`}
+                  {actualStatus === "MAINTENANCE" 
+                    ? (brokenItems.length > 1 ? `${brokenItems.length} Perbaikan` : "Perbaikan")
+                    : `${tenantCount}/2 ${tenantCount >= 2 ? "Penuh" : "Orang"}`}
                 </span>
               </div>
             );

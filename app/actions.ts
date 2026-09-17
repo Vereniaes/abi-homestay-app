@@ -48,8 +48,8 @@ export async function getDashboardStats() {
         select: { dateIn: true, dateDue: true, status: true },
       }),
       prisma.transaction.findMany({
-        where: { type: "INCOME" },
-        select: { date: true, amount: true },
+        select: { date: true, amount: true, type: true },
+        orderBy: { date: "desc" },
       }),
     ]);
 
@@ -128,6 +128,7 @@ export async function getDashboardStats() {
       monthlyTrends,
       dueTenants: dueTenants || [],
       maintenanceRoomsList: maintenanceRoomsList || [],
+      financialTransactions: transactions || [],
     };
   } catch (error) {
     console.error("Error in getDashboardStats:", error);
@@ -140,6 +141,7 @@ export async function getDashboardStats() {
       monthlyTrends: [],
       dueTenants: [],
       maintenanceRoomsList: [],
+      financialTransactions: [],
     };
   }
 }
@@ -190,7 +192,11 @@ export async function getRooms() {
   try {
     return await prisma.room.findMany({
       include: {
-        tenants: true,
+        tenants: {
+          where: {
+            status: { not: "INACTIVE" },
+          },
+        },
       },
       orderBy: {
         number: "asc",
@@ -345,7 +351,7 @@ export async function addTenant(formData: FormData) {
       });
     } else {
       const tenantCount = await prisma.tenant.count({
-        where: { roomId: room.id },
+        where: { roomId: room.id, status: { not: "INACTIVE" } },
       });
       if (tenantCount >= 2) {
         return { success: false, message: `Kamar ${roomNumber} sudah penuh (maksimal 2 orang).` };
@@ -371,6 +377,8 @@ export async function addTenant(formData: FormData) {
     });
 
     revalidatePath("/penghuni");
+    revalidatePath("/kamar");
+    revalidatePath("/");
     return { success: true, tenant: newTenant };
   } catch (error: any) {
     console.error("Error in addTenant:", error);
@@ -442,7 +450,7 @@ export async function updateTenant(formData: FormData) {
         } else {
           // Cek apakah kamar tujuan sudah penuh
           const tenantCount = await prisma.tenant.count({
-            where: { roomId: newRoom.id },
+            where: { roomId: newRoom.id, status: { not: "INACTIVE" } },
           });
           if (tenantCount >= 2) {
             return { success: false, message: `Kamar ${roomNumber} sudah penuh (maksimal 2 orang).` };
@@ -456,7 +464,7 @@ export async function updateTenant(formData: FormData) {
         // Kembalikan status kamar lama menjadi AVAILABLE jika kosong
         if (existingTenant.roomId && existingTenant.roomId !== newRoom.id) {
           const remainingOldTenants = await prisma.tenant.count({
-            where: { roomId: existingTenant.roomId, id: { not: existingTenant.id } },
+            where: { roomId: existingTenant.roomId, status: { not: "INACTIVE" }, id: { not: existingTenant.id } },
           });
           if (remainingOldTenants === 0) {
             await prisma.room.update({
@@ -652,7 +660,7 @@ export async function importTenantsBulk(tenantsData: any[]) {
 
 
 // helper --------------------------------------------------------------------------
-// function untuk menghapus penghuni
+// function untuk menonaktifkan / mengarsipkan penghuni (Soft Delete agar riwayat tetap ada)
 // input param : tenantId (string)
 // output : boolean success
 // end of helper ------------------------------------------------------------------
@@ -660,7 +668,60 @@ export async function deleteTenant(tenantId: string) {
   try {
     const user = await getCurrentUser();
     if (user && user.role === "VIEW") {
-      console.warn("Akses ditolak: User dengan role VIEW tidak memiliki akses hapus penghuni.");
+      console.warn("Akses ditolak: User dengan role VIEW tidak memiliki akses hapus/nonaktifkan penghuni.");
+      return false;
+    }
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+
+    if (tenant) {
+      // Soft delete: ubah status ke INACTIVE agar riwayat penghuni tetap tersimpan
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          status: "INACTIVE",
+        },
+      });
+
+      const remainingTenants = await prisma.tenant.count({
+        where: { 
+          roomId: tenant.roomId,
+          status: { not: "INACTIVE" },
+        },
+      });
+
+      if (remainingTenants === 0) {
+        const room = await prisma.room.findUnique({ where: { id: tenant.roomId } });
+        if (room && room.status !== "MAINTENANCE") {
+          await prisma.room.update({
+            where: { id: tenant.roomId },
+            data: { status: "AVAILABLE" },
+          });
+        }
+      }
+    }
+
+    revalidatePath("/penghuni");
+    revalidatePath("/kamar");
+    revalidatePath("/");
+    return true;
+  } catch (error) {
+    console.error("Error in deleteTenant:", error);
+    return false;
+  }
+}
+
+// helper --------------------------------------------------------------------------
+// function untuk menghapus data penghuni secara permanen dari database
+// input param : tenantId (string)
+// output : boolean success
+// end of helper ------------------------------------------------------------------
+export async function hardDeleteTenant(tenantId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (user && user.role === "VIEW") {
+      console.warn("Akses ditolak: User dengan role VIEW tidak memiliki akses hapus permanen.");
       return false;
     }
     const tenant = await prisma.tenant.findUnique({
@@ -673,22 +734,100 @@ export async function deleteTenant(tenantId: string) {
       });
 
       const remainingTenants = await prisma.tenant.count({
-        where: { roomId: tenant.roomId },
+        where: { 
+          roomId: tenant.roomId,
+          status: { not: "INACTIVE" },
+        },
       });
 
       if (remainingTenants === 0) {
-        await prisma.room.update({
-          where: { id: tenant.roomId },
-          data: { status: "AVAILABLE" },
-        });
+        const room = await prisma.room.findUnique({ where: { id: tenant.roomId } });
+        if (room && room.status !== "MAINTENANCE") {
+          await prisma.room.update({
+            where: { id: tenant.roomId },
+            data: { status: "AVAILABLE" },
+          });
+        }
       }
     }
 
     revalidatePath("/penghuni");
+    revalidatePath("/kamar");
+    revalidatePath("/");
     return true;
   } catch (error) {
-    console.error("Error in deleteTenant:", error);
+    console.error("Error in hardDeleteTenant:", error);
     return false;
+  }
+}
+
+// helper --------------------------------------------------------------------------
+// function untuk mengaktifkan kembali penghuni non-aktif ke kamar baru
+// input param : formData (FormData)
+// output : object { success: boolean, message?: string, tenant?: any }
+// end of helper ------------------------------------------------------------------
+export async function reactivateTenant(formData: FormData) {
+  try {
+    const user = await getCurrentUser();
+    if (user && user.role === "VIEW") {
+      return { success: false, message: "Akses ditolak: User VIEW tidak memiliki izin." };
+    }
+
+    const tenantId = formData.get("tenantId") as string;
+    const roomNumberRaw = (formData.get("roomNumber") as string) || "";
+    const dateInRaw = formData.get("dateIn") as string;
+    const rentType = (formData.get("rentType") as string) || "MONTHLY";
+
+    if (!tenantId) {
+      return { success: false, message: "ID penghuni tidak ditemukan." };
+    }
+
+    const roomNumberDigits = roomNumberRaw.replace(/[^0-9]/g, "");
+    const roomNumber = roomNumberDigits ? roomNumberDigits.padStart(2, "0") : "01";
+
+    let room = await prisma.room.findFirst({ where: { number: roomNumber } });
+    if (!room) {
+      room = await prisma.room.create({
+        data: { number: roomNumber, status: "OCCUPIED" },
+      });
+    } else {
+      const activeCount = await prisma.tenant.count({
+        where: { roomId: room.id, status: { not: "INACTIVE" } },
+      });
+      if (activeCount >= 2) {
+        return { success: false, message: `Kamar ${roomNumber} sudah penuh (maksimal 2 orang).` };
+      }
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { status: "OCCUPIED" },
+      });
+    }
+
+    const dateIn = dateInRaw ? new Date(dateInRaw) : new Date();
+    const dateDue = calculateDueDate(dateIn, rentType);
+    const pricing = await prisma.pricing.findFirst();
+    const rentAmount = getRentAmount(rentType, pricing);
+
+    const updated = await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        roomId: room.id,
+        status: "ACTIVE",
+        dateIn,
+        dateDue,
+        rentType: rentType as any,
+        rentAmount,
+      },
+      include: { room: true },
+    });
+
+    revalidatePath("/penghuni");
+    revalidatePath("/kamar");
+    revalidatePath("/");
+    return { success: true, tenant: updated };
+  } catch (error: any) {
+    console.error("Error in reactivateTenant:", error);
+    return { success: false, message: error?.message || "Gagal mengaktifkan kembali penghuni." };
   }
 }
 

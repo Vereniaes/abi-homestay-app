@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getTenants, addTenant, updateTenant, deleteTenant, getCurrentUser } from "../actions";
+import { getTenants, addTenant, updateTenant, deleteTenant, hardDeleteTenant, reactivateTenant, getCurrentUser } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
 import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
@@ -70,6 +70,13 @@ export default function PenghuniPage() {
   const [editRentType, setEditRentType] = useState("MONTHLY");
   const [editDateDue, setEditDateDue] = useState("");
   const [editError, setEditError] = useState("");
+
+  // Reactivate states
+  const [isReactivateOpen, setIsReactivateOpen] = useState(false);
+  const [reactivateRoom, setReactivateRoom] = useState("");
+  const [reactivateDateIn, setReactivateDateIn] = useState("");
+  const [reactivateRentType, setReactivateRentType] = useState("MONTHLY");
+  const [reactivateError, setReactivateError] = useState("");
 
   const calculatedDueDatePreview = useMemo(() => {
     if (!newDateIn) return null;
@@ -151,15 +158,65 @@ export default function PenghuniPage() {
   };
 
   const handleDelete = (tenantId: string) => {
+    if (!confirm("Keluarkan penghuni ini dari kamar dan simpan data ke riwayat non-aktif?")) return;
     startTransition(async () => {
       await deleteTenant(tenantId);
-      // Optimistic remove - hapus dari state langsung
+      clearClientCache("tenants");
+      clearClientCache("rooms");
+      clearClientCache("alerts");
+      clearClientCache("dashboardStats");
+      setSelectedTenant(null);
+      await fetchTenants();
+    });
+  };
+
+  const handleHardDelete = (tenantId: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus data penghuni ini secara permanen? Data riwayat ini tidak dapat dikembalikan.")) return;
+    startTransition(async () => {
+      await hardDeleteTenant(tenantId);
       const updated = tenants.filter((t) => t.id !== tenantId);
       setTenants(updated);
       setClientCache("tenants", updated);
       clearClientCache("rooms");
+      clearClientCache("alerts");
+      clearClientCache("dashboardStats");
       setSelectedTenant(null);
-      fetchTenants();
+      await fetchTenants();
+    });
+  };
+
+  const handleOpenReactivate = (tenant: Tenant) => {
+    setReactivateRoom(tenant.room?.number || "");
+    setReactivateDateIn(new Date().toISOString().split("T")[0]);
+    setReactivateRentType(tenant.rentType || "MONTHLY");
+    setReactivateError("");
+    setIsReactivateOpen(true);
+  };
+
+  const handleReactivateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTenant) return;
+    setReactivateError("");
+
+    const formData = new FormData();
+    formData.append("tenantId", selectedTenant.id);
+    formData.append("roomNumber", reactivateRoom);
+    formData.append("dateIn", reactivateDateIn);
+    formData.append("rentType", reactivateRentType);
+
+    startTransition(async () => {
+      const res = await reactivateTenant(formData);
+      if (res && res.success) {
+        setIsReactivateOpen(false);
+        setSelectedTenant(null);
+        clearClientCache("tenants");
+        clearClientCache("rooms");
+        clearClientCache("alerts");
+        clearClientCache("dashboardStats");
+        await fetchTenants();
+      } else {
+        setReactivateError(res?.message || "Gagal mengaktifkan kembali penghuni.");
+      }
     });
   };
 
@@ -408,8 +465,18 @@ export default function PenghuniPage() {
                   <span className="px-3 py-1 bg-surface-container rounded-lg font-label-md text-label-md text-on-surface-variant">
                     Kamar {selectedTenant.room?.number || "--"}
                   </span>
-                  <span className="px-3 py-1 bg-error-container text-on-error-container rounded-lg font-label-md text-label-md font-bold">
-                    {selectedTenant.status}
+                  <span className={`px-3 py-1 rounded-lg font-label-md text-label-md font-bold ${
+                    selectedTenant.status === "INACTIVE"
+                      ? "bg-surface-variant text-on-surface-variant"
+                      : selectedTenant.status === "EXPIRING_SOON"
+                      ? "bg-error-container text-on-error-container"
+                      : "bg-teal-500/20 text-brand-teal"
+                  }`}>
+                    {selectedTenant.status === "INACTIVE"
+                      ? "Non-aktif (Riwayat)"
+                      : selectedTenant.status === "EXPIRING_SOON"
+                      ? "Akan Jatuh Tempo"
+                      : "Aktif"}
                   </span>
                 </div>
               </div>
@@ -419,8 +486,9 @@ export default function PenghuniPage() {
                   href={getWhatsAppUrl(selectedTenant.phone)}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-4 rounded-xl bg-[#25D366] text-white font-label-md text-label-md flex items-center justify-center gap-2 mb-6 shadow-[0_4px_16px_rgba(37,211,102,0.3)] active:scale-95 transition-transform"
+                  className="w-full py-4 rounded-xl bg-[#25D366] text-white font-label-md text-label-md flex items-center justify-center gap-2 mb-6 shadow-[0_4px_16px_rgba(37,211,102,0.3)] active:scale-95 transition-transform font-bold"
                 >
+                  <span className="material-symbols-outlined text-lg">chat</span>
                   Hubungi via WhatsApp
                 </a>
               )}
@@ -458,22 +526,45 @@ export default function PenghuniPage() {
               <div className="flex flex-col gap-3 mt-6">
                 {!isViewOnly && (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(selectedTenant)}
-                      className="w-full py-3 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-lg">edit_calendar</span>
-                      Edit / Perpanjang Masa Sewa
-                    </button>
-                    <button
-                      onClick={() => handleDelete(selectedTenant.id)}
-                      disabled={isPending}
-                      className="w-full py-3 rounded-xl bg-error-container/20 border border-error-container text-error font-label-md text-label-md hover:bg-error-container/40 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-lg">person_remove</span>
-                      Hapus Penghuni
-                    </button>
+                    {selectedTenant.status !== "INACTIVE" ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(selectedTenant)}
+                          className="w-full py-3 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95 font-bold"
+                        >
+                          <span className="material-symbols-outlined text-lg">edit_calendar</span>
+                          Edit / Perpanjang Masa Sewa
+                        </button>
+                        <button
+                          onClick={() => handleDelete(selectedTenant.id)}
+                          disabled={isPending}
+                          className="w-full py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-label-md text-label-md hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2 font-semibold active:scale-95"
+                        >
+                          <span className="material-symbols-outlined text-lg">person_off</span>
+                          Keluarkan Penghuni (Simpan ke Riwayat)
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenReactivate(selectedTenant)}
+                          className="w-full py-3 rounded-xl bg-brand-teal text-white font-label-md text-label-md hover:bg-brand-deep-blue transition-colors flex items-center justify-center gap-2 shadow-sm active:scale-95 font-bold"
+                        >
+                          <span className="material-symbols-outlined text-lg">person_add</span>
+                          Aktifkan Kembali ke Kamar
+                        </button>
+                        <button
+                          onClick={() => handleHardDelete(selectedTenant.id)}
+                          disabled={isPending}
+                          className="w-full py-3 rounded-xl bg-error-container/20 border border-error-container text-error font-label-md text-label-md hover:bg-error-container/40 transition-colors flex items-center justify-center gap-2 font-semibold active:scale-95"
+                        >
+                          <span className="material-symbols-outlined text-lg">delete_forever</span>
+                          Hapus Permanen
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
                 <button
@@ -781,6 +872,118 @@ export default function PenghuniPage() {
         tenants={tenants}
         onSuccess={handleImportSuccess}
       />
+
+      {/* Modal Aktifkan Kembali Penghuni (Reactivate Modal) */}
+      {isReactivateOpen && selectedTenant && (
+        <div 
+          className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setIsReactivateOpen(false) }}
+        >
+          <div
+            onClick={() => setIsReactivateOpen(false)}
+            className="fixed inset-0 bg-black/50 transition-opacity"
+          ></div>
+          <div className="relative w-full md:w-[500px] bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto hide-scrollbar pb-safe z-10 animate-slide-up">
+            <div
+              className="w-full flex justify-center pt-4 pb-2 cursor-pointer"
+              onClick={() => setIsReactivateOpen(false)}
+            >
+              <div className="w-12 h-1.5 bg-outline-variant rounded-full"></div>
+            </div>
+
+            <div className="px-6 pb-8 pt-2">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="font-headline-md text-headline-md text-primary font-bold">
+                    Aktifkan Kembali Penghuni
+                  </h3>
+                  <p className="text-label-sm text-on-surface-variant">
+                    {selectedTenant.name} ({selectedTenant.phone})
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsReactivateOpen(false)}
+                  className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-variant/40"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              {reactivateError && (
+                <div className="mb-4 p-3 rounded-xl bg-error-container/60 border border-error/20 text-on-error-container text-label-sm font-medium flex items-center gap-2">
+                  <span className="material-symbols-outlined text-error text-lg">error</span>
+                  <span>{reactivateError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleReactivateSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
+                    Pilih Nomor Kamar
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={reactivateRoom}
+                    onChange={(e) => setReactivateRoom(e.target.value)}
+                    placeholder="Contoh: 01 atau 15"
+                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md font-semibold text-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
+                    Tanggal Mulai Masuk Kembali
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={reactivateDateIn}
+                    onChange={(e) => setReactivateDateIn(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md font-semibold text-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
+                    Tipe Sewa
+                  </label>
+                  <select
+                    value={reactivateRentType}
+                    onChange={(e) => setReactivateRentType(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md font-semibold text-primary"
+                  >
+                    <option value="DAILY">Harian</option>
+                    <option value="WEEKLY">Mingguan</option>
+                    <option value="MONTHLY">Bulanan</option>
+                    <option value="SEMESTERLY">Per Semester</option>
+                    <option value="YEARLY">Tahunan</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsReactivateOpen(false)}
+                    className="flex-1 py-3 rounded-xl bg-surface-container text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="flex-1 py-3 rounded-xl bg-brand-teal text-white font-label-md text-label-md font-bold hover:bg-brand-deep-blue shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-lg">check_circle</span>
+                    {isPending ? "Menyimpan..." : "Aktifkan"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
