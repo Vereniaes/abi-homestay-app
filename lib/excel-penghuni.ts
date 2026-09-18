@@ -8,6 +8,7 @@ import { formatRentTypeLabel } from "./rent";
 export interface TenantExportData {
   name: string;
   phone: string;
+  email?: string | null;
   room?: { number: string };
   status: string;
   dateIn: Date | string;
@@ -26,6 +27,7 @@ export function exportPenghuniExcel(tenants: TenantExportData[]): void {
     "Nama Penghuni": t.name || "",
     "Nomor Kamar": t.room?.number || "--",
     "Nomor HP": t.phone || "-",
+    "Email": t.email || "-",
     "Tanggal Masuk": t.dateIn ? new Date(t.dateIn).toISOString().split("T")[0] : "-",
     "Jatuh Tempo": t.dateDue ? new Date(t.dateDue).toISOString().split("T")[0] : "-",
     "Tipe Sewa": formatRentTypeLabel(t.rentType),
@@ -50,6 +52,7 @@ export function generatePenghuniCSV(tenants: TenantExportData[]): string {
     "Nama Penghuni",
     "Nomor Kamar",
     "Nomor HP",
+    "Email",
     "Tanggal Masuk",
     "Jatuh Tempo",
     "Tipe Sewa",
@@ -71,6 +74,7 @@ export function generatePenghuniCSV(tenants: TenantExportData[]): string {
       `"${(t.name || "").replace(/"/g, '""')}"`,
       `"${t.room?.number || "--"}"`,
       `"${t.phone || "-"}"`,
+      `"${t.email || "-"}"`,
       `"${tglMasuk}"`,
       `"${tglJatuhTempo}"`,
       `"${formatRentTypeLabel(t.rentType)}"`,

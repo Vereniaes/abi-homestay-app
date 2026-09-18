@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { sanitizePhoneDigits, formatPhoneDisplay } from "@/lib/phone";
 
 import { calculateDueDate, getRentAmount } from "@/lib/rent";
+import { sendDueReminderEmail } from "@/lib/email";
 
 // helper --------------------------------------------------------------------------
 // function untuk mengambil statistik dashboard beranda dengan eksekusi kueri paralel
@@ -320,6 +321,7 @@ export async function addTenant(formData: FormData) {
     const name = (formData.get("name") as string) || "Penghuni Baru";
     const phoneRaw = (formData.get("phone") as string) || "-";
     const phone = phoneRaw !== "-" ? formatPhoneDisplay(phoneRaw) : "-";
+    const email = (formData.get("email") as string)?.trim() || null;
     const roomNumberRaw = (formData.get("roomNumber") as string) || "";
     const dateInRaw = formData.get("dateIn") as string;
     const rentType = (formData.get("rentType") as string) || "MONTHLY";
@@ -362,6 +364,7 @@ export async function addTenant(formData: FormData) {
       data: {
         name,
         phone,
+        email,
         roomId: room.id,
         status: "ACTIVE",
         dateIn,
@@ -411,6 +414,8 @@ export async function updateTenant(formData: FormData) {
     const name = (formData.get("name") as string) || existingTenant.name;
     const phoneRaw = (formData.get("phone") as string) || existingTenant.phone;
     const phone = phoneRaw !== "-" ? formatPhoneDisplay(phoneRaw) : "-";
+    const emailRaw = formData.get("email");
+    const email = emailRaw !== null ? ((emailRaw as string).trim() || null) : existingTenant.email;
     const roomNumberRaw = formData.get("roomNumber") as string;
     const rentType = (formData.get("rentType") as string) || existingTenant.rentType;
     const dateDueRaw = formData.get("dateDue") as string;
@@ -478,6 +483,7 @@ export async function updateTenant(formData: FormData) {
       data: {
         name,
         phone,
+        email,
         roomId: targetRoomId,
         rentType: rentType as any,
         rentAmount,
@@ -521,6 +527,7 @@ export async function importTenantsBulk(tenantsData: any[]) {
       const name = (item.name || "Penghuni Baru").trim();
       const phoneDigits = sanitizePhoneDigits(item.phone || "");
       const phone = phoneDigits ? formatPhoneDisplay(phoneDigits) : "-";
+      const email = item.email && typeof item.email === "string" ? item.email.trim() : null;
       const roomNumberDigits = (item.roomNumber || "").replace(/[^0-9]/g, "");
       const roomNumber = roomNumberDigits ? roomNumberDigits.padStart(2, "0") : "01";
 
@@ -533,6 +540,7 @@ export async function importTenantsBulk(tenantsData: any[]) {
       return {
         name,
         phone,
+        email,
         roomNumber,
         dateIn,
         rentType,
@@ -609,6 +617,7 @@ export async function importTenantsBulk(tenantsData: any[]) {
           data: {
             name: item.name,
             phone: item.phone,
+            email: item.email || existingTenant.email,
             status: "ACTIVE",
             dateIn: item.dateIn,
             dateDue: item.dateDue,
@@ -627,6 +636,7 @@ export async function importTenantsBulk(tenantsData: any[]) {
             data: {
               name: item.name,
               phone: item.phone,
+              email: item.email,
               roomId,
               status: "ACTIVE",
               dateIn: item.dateIn,
@@ -1470,4 +1480,85 @@ export async function deleteUser(userId: string) {
     return { success: false, message: "Terjadi kesalahan pada server." };
   }
 }
+
+// helper --------------------------------------------------------------------------
+// function untuk memicu pengiriman email pengingat H-3 jatuh tempo secara manual
+// input param : none
+// output : object { success: boolean, count: number, details: array, message: string }
+// end of helper ------------------------------------------------------------------
+export async function triggerDueRemindersAction() {
+  try {
+    const user = await getCurrentUser();
+    if (user && user.role === "VIEW") {
+      return { success: false, message: "Akses ditolak: Anda tidak memiliki izin memicu email pengingat." };
+    }
+
+    const now = new Date();
+    const targetDate = new Date(now);
+    targetDate.setDate(targetDate.getDate() + 3);
+
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    const day = targetDate.getDate();
+
+    const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+    const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+
+    const tenants = await prisma.tenant.findMany({
+      where: {
+        status: "ACTIVE",
+        dateDue: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        email: {
+          not: null,
+        },
+      },
+      include: {
+        room: true,
+      },
+    });
+
+    const validTenants = tenants.filter((t) => t.email && t.email.trim().length > 0 && t.email.includes("@"));
+
+    let sentCount = 0;
+    const results = [];
+
+    for (const tenant of validTenants) {
+      const emailData = {
+        tenantName: tenant.name,
+        tenantEmail: tenant.email!.trim(),
+        roomNumber: tenant.room?.number || "--",
+        dateDue: tenant.dateDue || targetDate,
+        rentAmount: tenant.rentAmount,
+        rentType: tenant.rentType,
+      };
+
+      const res = await sendDueReminderEmail(emailData);
+      if (res.success) sentCount++;
+
+      results.push({
+        name: tenant.name,
+        email: tenant.email,
+        room: tenant.room?.number,
+        success: res.success,
+        simulated: res.simulated || false,
+        error: res.error,
+      });
+    }
+
+    return {
+      success: true,
+      totalMatched: validTenants.length,
+      sentCount,
+      results,
+      message: `Berhasil memproses pengingat H-3: ${sentCount} email terkirim.`,
+    };
+  } catch (error: any) {
+    console.error("Error in triggerDueRemindersAction:", error);
+    return { success: false, message: error?.message || "Gagal memproses email pengingat." };
+  }
+}
+
 

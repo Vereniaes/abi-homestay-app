@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getPricingAndSettings, updatePricing, updateSetting, getCurrentUser, logoutUser } from "../actions";
+import { getPricingAndSettings, updatePricing, updateSetting, getCurrentUser, logoutUser, triggerDueRemindersAction } from "../actions";
 import { clearClientCache } from "@/lib/client-cache";
 
 interface Pricing {
@@ -50,8 +50,10 @@ export default function PengaturanPage() {
   const [setting, setSetting] = useState<Setting | null>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
-  const [activeSheet, setActiveSheet] = useState<"PRICE" | "FACILITIES" | "HELP" | null>(null);
+  const [activeSheet, setActiveSheet] = useState<"PRICE" | "FACILITIES" | "EMAIL_REMINDER" | "HELP" | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [testEmailResult, setTestEmailResult] = useState<any>(null);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
 
   // Pricing Form States
   const [daily, setDaily] = useState("150.000");
@@ -202,6 +204,33 @@ export default function PengaturanPage() {
                 </p>
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
                   Daftar inventaris default kamar
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-outline-variant group-hover:text-secondary transition-colors">
+              chevron_right
+            </span>
+          </button>
+
+          <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
+
+          <button
+            onClick={() => {
+              setTestEmailResult(null);
+              setActiveSheet("EMAIL_REMINDER");
+            }}
+            className="menu-item w-full flex items-center justify-between p-3 rounded-lg hover:premium-glow group bg-surface-container-lowest"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center text-primary-container group-hover:bg-secondary/10 group-hover:text-secondary transition-colors">
+                <span className="material-symbols-outlined">mark_email_read</span>
+              </div>
+              <div className="text-left">
+                <p className="font-body-md text-body-md font-medium text-primary-container group-hover:text-secondary transition-colors">
+                  Email Pengingat (H-3)
+                </p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">
+                  Notifikasi otomatis jatuh tempo sewa
                 </p>
               </div>
             </div>
@@ -475,6 +504,115 @@ export default function PengaturanPage() {
                 >
                   Tutup
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Popup: Email Pengingat Otomatis (H-3) */}
+      {activeSheet === "EMAIL_REMINDER" && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveSheet(null) }}
+        >
+          <div
+            onClick={() => setActiveSheet(null)}
+            className="fixed inset-0 bg-black/50 transition-opacity"
+          ></div>
+          <div className="relative w-full md:w-[540px] bg-surface-container-lowest z-10 rounded-t-3xl md:rounded-3xl shadow-2xl pt-2 pb-safe max-h-[85vh] overflow-y-auto hide-scrollbar animate-slide-up">
+            <div
+              className="w-12 h-1.5 bg-surface-container-highest rounded-full mx-auto mb-4 cursor-pointer"
+              onClick={() => setActiveSheet(null)}
+            ></div>
+            <div className="px-md pb-6">
+              <h2 className="font-headline-md text-headline-md text-primary-container mb-4 flex items-center gap-2 font-bold">
+                <span className="material-symbols-outlined text-brand-teal">mark_email_read</span>
+                Email Pengingat Otomatis (H-3)
+              </h2>
+
+              <div className="space-y-4">
+                {/* Status Card */}
+                <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-xl bg-brand-teal text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <span className="material-symbols-outlined text-xl">schedule</span>
+                  </div>
+                  <div>
+                    <h4 className="font-title-sm font-bold text-primary">Jadwal Pengiriman Otomatis</h4>
+                    <p className="text-body-sm text-on-surface-variant mt-1 leading-relaxed">
+                      Sistem memeriksa database setiap hari pukul <strong>08:00 WIB</strong> (via Vercel Cron). Seluruh penghuni aktif yang jatuh tempo tepat 3 hari lagi dan memiliki alamat email akan menerima email pengingat tagihan sewa.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Information Card */}
+                <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high text-body-sm text-on-surface-variant space-y-2">
+                  <p className="font-semibold text-primary">Ketentuan Pengiriman:</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed text-outline">
+                    <li>Alamat email dapat diisi pada form <strong>Tambah / Edit Penghuni</strong>.</li>
+                    <li>Jika email tidak diisi, sistem akan otomatis melewati penghuni tersebut.</li>
+                    <li>Email pengingat berisi rincian kamar, tipe sewa, nominal tagihan, dan nomor rekening transfer.</li>
+                  </ul>
+                </div>
+
+                {/* Test Action Section */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    disabled={isTestingEmail || currentUser?.role === "VIEW"}
+                    onClick={async () => {
+                      setIsTestingEmail(true);
+                      setTestEmailResult(null);
+                      try {
+                        const res = await triggerDueRemindersAction();
+                        setTestEmailResult(res);
+                      } catch (err: any) {
+                        setTestEmailResult({ success: false, message: err?.message || "Gagal memproses." });
+                      } finally {
+                        setIsTestingEmail(false);
+                      }
+                    }}
+                    className="w-full py-3.5 px-4 rounded-xl bg-brand-teal text-white font-label-md text-label-md font-bold flex items-center justify-center gap-2 hover:bg-brand-deep-blue transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {isTestingEmail ? "hourglass_top" : "send"}
+                    </span>
+                    {isTestingEmail ? "Sedang Memeriksa & Mengirim..." : "Uji Coba Kirim Pengingat H-3 Sekarang"}
+                  </button>
+
+                  {/* Test Result Display */}
+                  {testEmailResult && (
+                    <div className={`mt-3 p-4 rounded-xl border text-body-sm animate-slide-up ${
+                      testEmailResult.success 
+                        ? "bg-teal-500/10 border-teal-500/30 text-teal-800 dark:text-teal-200" 
+                        : "bg-error-container/40 border-error/30 text-on-error-container"
+                    }`}>
+                      <div className="flex items-center gap-2 font-bold mb-1">
+                        <span className="material-symbols-outlined text-base">
+                          {testEmailResult.success ? "check_circle" : "error"}
+                        </span>
+                        <span>{testEmailResult.message || (testEmailResult.success ? "Berhasil!" : "Gagal!")}</span>
+                      </div>
+                      {testEmailResult.success && (
+                        <p className="text-xs opacity-90">
+                          {testEmailResult.totalMatched === 0 
+                            ? "Tidak ada penghuni yang tepat jatuh tempo dalam 3 hari ke depan saat ini." 
+                            : `Berhasil mengirim ${testEmailResult.sentCount} email dari ${testEmailResult.totalMatched} penghuni yang jatuh tempo.`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSheet(null)}
+                    className="w-full py-3 px-4 rounded-xl border border-outline-variant/50 text-primary font-label-md text-label-md hover:bg-surface-variant transition-colors"
+                  >
+                    Tutup
+                  </button>
+                </div>
               </div>
             </div>
           </div>

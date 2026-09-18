@@ -53,6 +53,7 @@ model Tenant {
   id           String        @id @default(auto()) @map("_id") @db.ObjectId
   name         String
   phone        String
+  email        String?
   roomId       String        @db.ObjectId
   room         Room          @relation(fields: [roomId], references: [id])
   status       TenantStatus  @default(ACTIVE)
