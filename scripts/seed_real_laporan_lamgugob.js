@@ -40,7 +40,8 @@ const REAL_DATA_RECORDS = [
   { room: "32", name: "HAIKAL", dateIn: "2026-09-05", dateDue: "2026-10-05", period: "1 BULAN", note: "" },
   { room: "33", vacant: true },
   { room: "34", name: "MUKSIDIN", dateIn: "2026-08-31", dateDue: "2027-08-31", period: "1 TAHUN", note: "" },
-  { room: "35", name: "M YASIR / ASYA", dateIn: "2026-09-06", dateDue: "2027-09-06", period: "1 TAHUN", note: "" },
+  { room: "35", name: "M. YASIR", dateIn: "2026-09-06", dateDue: "2027-09-06", period: "1 TAHUN", note: "Kamar Berdua bersama Asya", paidAmount: 14000000 },
+  { room: "35", name: "ASYA", dateIn: "2026-09-06", dateDue: "2027-09-06", period: "1 TAHUN", note: "Kamar Berdua bersama M. Yasir", paidAmount: 14000000 },
   { room: "36", name: "TROPICOLLO", isPartner: true, note: "Tropicollo Partner Room" },
   { room: "37", name: "NAZWAN ARIF RITONGAN", dateIn: "2026-09-13", dateDue: "2026-10-13", period: "1 BULAN", note: "BSI FARABI" },
 
@@ -236,13 +237,21 @@ async function main() {
     txCount++;
   }
 
+  const finalTotalRooms = await prisma.room.count();
+  const finalOccupied = await prisma.room.count({ where: { status: "OCCUPIED" } });
+  const finalAvailable = await prisma.room.count({ where: { status: "AVAILABLE" } });
+  const finalMaintenance = await prisma.room.count({ where: { status: "MAINTENANCE" } });
+  const finalTenants = await prisma.tenant.count();
+  const finalTxCount = await prisma.transaction.count();
+
   console.log("\n==================================================");
   console.log("🎉 SEEDING LAPORAN LAMGUGOB BERHASIL!");
-  console.log(`🏠 Total Kamar       : 58`);
-  console.log(`🟢 Terisi (Occupied) : ${occupiedCount}`);
-  console.log(`🟡 Kosong (Available): ${availableCount}`);
-  console.log(`🔴 Perbaikan (Maint) : ${maintenanceCount}`);
-  console.log(`🧾 Total Transaksi   : ${txCount}`);
+  console.log(`🏠 Total Kamar       : ${finalTotalRooms}`);
+  console.log(`🟢 Terisi (Occupied) : ${finalOccupied}`);
+  console.log(`🟡 Kosong (Available): ${finalAvailable}`);
+  console.log(`🔴 Perbaikan (Maint) : ${finalMaintenance}`);
+  console.log(`👤 Total Penghuni    : ${finalTenants}`);
+  console.log(`🧾 Total Transaksi   : ${finalTxCount}`);
   console.log("==================================================");
 }
 
