@@ -71,16 +71,6 @@ const REAL_DATA_RECORDS = [
   { room: "58", name: "M RAJA", dateIn: "2026-09-02", dateDue: "2026-10-02", period: "1 BULAN", note: "" }
 ];
 
-const EXPENSES = [
-  { desc: "Pembelian Token Listrik Homestay 500k x 3", amount: 1500000, date: "2026-09-03", method: "CASH" },
-  { desc: "Tagihan Internet WiFi Dedicated 100 Mbps", amount: 650000, date: "2026-09-05", method: "TRANSFER" },
-  { desc: "Pembayaran Tagihan Air PDAM Bulanan", amount: 780000, date: "2026-09-08", method: "TRANSFER" },
-  { desc: "Biaya Kebersihan Lingkungan & Retribusi Sampah", amount: 350000, date: "2026-09-10", method: "CASH" },
-  { desc: "Service Rutin & Cuci AC 6 Kamar", amount: 450000, date: "2026-09-12", method: "TRANSFER" },
-  { desc: "Belanja Perlengkapan Pembersih & Sabun Cuci", amount: 280000, date: "2026-09-15", method: "CASH" },
-  { desc: "Beli Galon Air Mineral & Kebutuhan Pantry", amount: 140000, date: "2026-09-18", method: "CASH" }
-];
-
 async function main() {
   console.log("🚀 MEMULAI IMPOR DATA NYATA 'LAPORAN LAMGUGOB'...");
 
@@ -215,23 +205,6 @@ async function main() {
         description: `Pembayaran Sewa Kamar ${item.room} - ${item.name} (${item.period || "Mitra"})${noteText}`,
         paymentMethod: "TRANSFER",
         date: dateIn
-      }
-    });
-    txCount++;
-  }
-
-  // 4. Masukkan Pengeluaran Operasional September 2026
-  console.log("💸 Memasukkan pengeluaran operasional September 2026...");
-  for (let i = 0; i < EXPENSES.length; i++) {
-    const exp = EXPENSES[i];
-    await prisma.transaction.create({
-      data: {
-        refId: `EXP-202609-${String(i + 1).padStart(3, "0")}`,
-        type: "EXPENSE",
-        amount: exp.amount,
-        description: exp.desc,
-        paymentMethod: exp.method,
-        date: new Date(`${exp.date}T08:30:00.000Z`)
       }
     });
     txCount++;
