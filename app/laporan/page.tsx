@@ -501,7 +501,7 @@ export default function LaporanPage() {
                 setExpandedId(null);
               }}
               placeholder="Cari nama penghuni, no. kamar (misal: 35), Ref ID, dll..."
-              className="w-full pl-10 pr-10 py-3 bg-surface rounded-xl border border-surface-variant text-on-surface text-body-md placeholder:text-outline focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all shadow-sm"
+              className="w-full pl-10 pr-10 py-2.5 bg-surface-container-lowest dark:bg-surface-container rounded-xl border border-outline-variant/60 dark:border-surface-variant text-on-surface text-body-md placeholder:text-outline focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all shadow-sm"
             />
             {searchQuery && (
               <button
@@ -528,10 +528,10 @@ export default function LaporanPage() {
                 setCurrentPage(1);
                 setExpandedId(null);
               }}
-              className={`px-3 py-1.5 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 ${
+              className={`px-3.5 py-2 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 border ${
                 typeFilter === "ALL"
-                  ? "bg-primary text-white shadow-sm"
-                  : "bg-surface-container text-on-surface-variant hover:bg-surface-variant"
+                  ? "bg-brand-teal text-white border-brand-teal shadow-[0_2px_8px_rgba(13,148,136,0.3)] dark:bg-brand-teal dark:text-white dark:border-brand-teal"
+                  : "bg-surface-container text-on-surface-variant border-transparent hover:bg-surface-variant dark:hover:bg-surface-container-high"
               }`}
             >
               Semua ({transactions.length})
@@ -543,14 +543,14 @@ export default function LaporanPage() {
                 setCurrentPage(1);
                 setExpandedId(null);
               }}
-              className={`px-3 py-1.5 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1 ${
+              className={`px-3.5 py-2 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1.5 border ${
                 typeFilter === "INCOME"
-                  ? "bg-secondary text-white shadow-sm"
-                  : "bg-surface-container text-[#2E7D32] hover:bg-[#E8F5E9]"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-[0_2px_8px_rgba(5,150,105,0.3)] dark:bg-emerald-600 dark:text-white dark:border-emerald-500"
+                  : "bg-emerald-50/80 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40 dark:hover:bg-emerald-900/50"
               }`}
             >
               <span>Pemasukan</span>
-              <span className="text-[11px] opacity-80">({transactions.filter((t) => t.type === "INCOME").length})</span>
+              <span className="text-[11px] opacity-90 font-medium">({transactions.filter((t) => t.type === "INCOME").length})</span>
             </button>
             <button
               type="button"
@@ -559,14 +559,14 @@ export default function LaporanPage() {
                 setCurrentPage(1);
                 setExpandedId(null);
               }}
-              className={`px-3 py-1.5 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1 ${
+              className={`px-3.5 py-2 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1.5 border ${
                 typeFilter === "EXPENSE"
-                  ? "bg-error text-white shadow-sm"
-                  : "bg-surface-container text-error hover:bg-error-container/20"
+                  ? "bg-rose-600 text-white border-rose-600 shadow-[0_2px_8px_rgba(225,29,72,0.3)] dark:bg-rose-600 dark:text-white dark:border-rose-500"
+                  : "bg-rose-50/80 text-rose-700 border-rose-200/60 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40 dark:hover:bg-rose-900/50"
               }`}
             >
               <span>Pengeluaran</span>
-              <span className="text-[11px] opacity-80">({transactions.filter((t) => t.type === "EXPENSE").length})</span>
+              <span className="text-[11px] opacity-90 font-medium">({transactions.filter((t) => t.type === "EXPENSE").length})</span>
             </button>
           </div>
         </div>
