@@ -86,17 +86,52 @@ export default function LaporanPage() {
   const [editSelectedFile, setEditSelectedFile] = useState<File | null>(null);
   const [editError, setEditError] = useState("");
 
+  // Search & Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "INCOME" | "EXPENSE">("ALL");
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 6;
 
-  const totalPages = Math.ceil(transactions.length / itemsPerPage) || 1;
+  const filteredTransactions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return transactions.filter((tx) => {
+      if (typeFilter !== "ALL" && tx.type !== typeFilter) {
+        return false;
+      }
+      if (!q) return true;
+
+      const tenantName = tx.tenant?.name?.toLowerCase() || "";
+      if (tenantName.includes(q)) return true;
+
+      const roomNum = tx.room?.number?.toLowerCase() || "";
+      if (roomNum.includes(q)) return true;
+      if (`kamar ${roomNum}`.includes(q)) return true;
+
+      const refId = tx.refId?.toLowerCase() || "";
+      if (refId.includes(q)) return true;
+
+      const desc = tx.description?.toLowerCase() || "";
+      if (desc.includes(q)) return true;
+
+      const rentType = tx.rentType?.toLowerCase() || "";
+      if (rentType.includes(q)) return true;
+
+      const method = tx.paymentMethod?.toLowerCase() || "";
+      if (method.includes(q)) return true;
+
+      return false;
+    });
+  }, [transactions, searchQuery, typeFilter]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage) || 1;
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
   const paginatedTransactions = useMemo(() => {
     const start = (validCurrentPage - 1) * itemsPerPage;
-    return transactions.slice(start, start + itemsPerPage);
-  }, [transactions, validCurrentPage, itemsPerPage]);
+    return filteredTransactions.slice(start, start + itemsPerPage);
+  }, [filteredTransactions, validCurrentPage, itemsPerPage]);
 
   const visiblePages = useMemo(() => {
     if (totalPages <= 5) {
@@ -436,13 +471,104 @@ export default function LaporanPage() {
 
       {/* Transaction History */}
       <section>
-        <div className="flex items-center justify-between mb-4 px-2">
-          <h3 className="text-headline-md font-bold text-primary-container text-[20px]">
-            Riwayat Transaksi Terbaru
-          </h3>
-          <span className="text-secondary text-label-sm font-semibold bg-secondary/10 px-2.5 py-1 rounded-full">
-            {transactions.length} Transaksi
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 px-2">
+          <div>
+            <h3 className="text-headline-md font-bold text-primary-container text-[20px]">
+              Riwayat Transaksi
+            </h3>
+            <p className="text-on-surface-variant text-label-sm mt-0.5">
+              Cari dan pantau riwayat pembayaran penghuni serta operasional
+            </p>
+          </div>
+          <span className="self-start sm:self-auto text-secondary text-label-sm font-semibold bg-secondary/10 px-3 py-1 rounded-full">
+            {filteredTransactions.length} dari {transactions.length} Transaksi
           </span>
+        </div>
+
+        {/* Search & Filter Bar */}
+        <div className="mb-4 space-y-3 px-1">
+          {/* Search Input */}
+          <div className="relative flex items-center w-full">
+            <span className="material-symbols-outlined absolute left-3.5 text-outline text-[20px] pointer-events-none">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+                setExpandedId(null);
+              }}
+              placeholder="Cari nama penghuni, no. kamar (misal: 35), Ref ID, dll..."
+              className="w-full pl-10 pr-10 py-3 bg-surface rounded-xl border border-surface-variant text-on-surface text-body-md placeholder:text-outline focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all shadow-sm"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                  setExpandedId(null);
+                }}
+                className="absolute right-3 p-1 rounded-full hover:bg-surface-variant text-outline hover:text-on-surface transition-colors"
+                title="Hapus pencarian"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            )}
+          </div>
+
+          {/* Type Filter Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter("ALL");
+                setCurrentPage(1);
+                setExpandedId(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 ${
+                typeFilter === "ALL"
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-surface-container text-on-surface-variant hover:bg-surface-variant"
+              }`}
+            >
+              Semua ({transactions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter("INCOME");
+                setCurrentPage(1);
+                setExpandedId(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1 ${
+                typeFilter === "INCOME"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "bg-surface-container text-[#2E7D32] hover:bg-[#E8F5E9]"
+              }`}
+            >
+              <span>Pemasukan</span>
+              <span className="text-[11px] opacity-80">({transactions.filter((t) => t.type === "INCOME").length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter("EXPENSE");
+                setCurrentPage(1);
+                setExpandedId(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1 ${
+                typeFilter === "EXPENSE"
+                  ? "bg-error text-white shadow-sm"
+                  : "bg-surface-container text-error hover:bg-error-container/20"
+              }`}
+            >
+              <span>Pengeluaran</span>
+              <span className="text-[11px] opacity-80">({transactions.filter((t) => t.type === "EXPENSE").length})</span>
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -452,9 +578,22 @@ export default function LaporanPage() {
               <div className="h-20 rounded-2xl skeleton-shimmer w-full"></div>
               <div className="h-20 rounded-2xl skeleton-shimmer w-full"></div>
             </>
-          ) : transactions.length === 0 ? (
-            <div className="p-8 text-center bg-surface rounded-2xl border border-surface-variant text-on-surface-variant">
-              <p className="font-medium text-body-md">Belum ada riwayat transaksi</p>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="p-8 text-center bg-surface rounded-2xl border border-surface-variant text-on-surface-variant flex flex-col items-center gap-2">
+              <span className="material-symbols-outlined text-4xl text-outline">search_off</span>
+              <p className="font-semibold text-body-md text-primary">Tidak ada transaksi ditemukan</p>
+              <p className="text-label-sm text-on-surface-variant">
+                {searchQuery ? `Tidak ada hasil untuk pencarian "${searchQuery}"` : "Belum ada riwayat transaksi"}
+              </p>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="mt-2 px-4 py-2 bg-secondary/10 hover:bg-secondary/20 text-secondary font-bold text-label-sm rounded-xl transition-all"
+                >
+                  Reset Pencarian
+                </button>
+              )}
             </div>
           ) : (
             paginatedTransactions.map((tx, idx) => {
@@ -598,11 +737,11 @@ export default function LaporanPage() {
         </div>
 
         {/* Pagination Controls */}
-        {!isLoading && transactions.length > itemsPerPage && (
+        {!isLoading && filteredTransactions.length > itemsPerPage && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 pb-2 px-1 text-on-surface-variant">
             <span className="text-label-sm text-outline">
-              Menampilkan {Math.min((validCurrentPage - 1) * itemsPerPage + 1, transactions.length)}-
-              {Math.min(validCurrentPage * itemsPerPage, transactions.length)} dari {transactions.length} transaksi
+              Menampilkan {Math.min((validCurrentPage - 1) * itemsPerPage + 1, filteredTransactions.length)}-
+              {Math.min(validCurrentPage * itemsPerPage, filteredTransactions.length)} dari {filteredTransactions.length} transaksi
             </span>
 
             <div className="flex items-center gap-1.5">
