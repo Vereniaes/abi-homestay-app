@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getTenants, addTenant, updateTenant, deleteTenant, hardDeleteTenant, reactivateTenant, getCurrentUser } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
@@ -37,12 +37,16 @@ interface Tenant {
 // input param : none
 // output : React Client Component JSX
 // end of helper ------------------------------------------------------------------
-export default function PenghuniPage() {
+function PenghuniContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const querySearch = searchParams ? (searchParams.get("search") || "") : "";
+  const queryTenantId = searchParams ? searchParams.get("tenantId") : null;
+
   const [tenants, setTenants] = useState<Tenant[]>(() => {
     return getClientCache<Tenant[]>("tenants") || [];
   });
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(querySearch);
   const [filter, setFilter] = useState("semua");
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -131,6 +135,27 @@ export default function PenghuniPage() {
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (querySearch && search !== querySearch) {
+      setSearch(querySearch);
+    }
+  }, [querySearch]);
+
+  useEffect(() => {
+    if (tenants.length > 0 && (querySearch || queryTenantId)) {
+      const found = tenants.find((t) => 
+        (queryTenantId && t.id === queryTenantId) ||
+        (querySearch && (
+          t.room?.number?.toLowerCase() === querySearch.toLowerCase() ||
+          t.name.toLowerCase().includes(querySearch.toLowerCase())
+        ))
+      );
+      if (found) {
+        setSelectedTenant(found);
+      }
+    }
+  }, [tenants, querySearch, queryTenantId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1126,5 +1151,13 @@ export default function PenghuniPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function PenghuniPage() {
+  return (
+    <Suspense fallback={<div className="pt-32 p-8 text-center text-on-surface-variant font-label-md">Memuat data penghuni...</div>}>
+      <PenghuniContent />
+    </Suspense>
   );
 }

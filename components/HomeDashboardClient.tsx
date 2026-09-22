@@ -382,30 +382,31 @@ export default function HomeDashboardClient({
           <div className="flex flex-col gap-3">
             {stats.dueTenants.length > 0 ? (
               stats.dueTenants.map((tenant: any) => (
-                <div
+                <Link
                   key={tenant.id}
-                  className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-brand-amber animate-slide-up stagger-2 micro-glow-amber transition-all duration-300 hover:-translate-y-1"
+                  href={`/penghuni?search=${encodeURIComponent(tenant.room?.number || tenant.name)}`}
+                  className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-brand-amber animate-slide-up stagger-2 micro-glow-amber transition-all duration-300 hover:-translate-y-1 hover:shadow-md cursor-pointer group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-tertiary-fixed rounded-full text-brand-amber">
+                    <div className="p-2 bg-tertiary-fixed rounded-full text-brand-amber group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined" data-icon="payments">
                         payments
                       </span>
                     </div>
                     <div>
-                      <p className="font-label-md text-primary font-semibold">Kamar {tenant.room.number} - {tenant.name}</p>
-                      <p className="font-label-sm text-on-surface-variant">Akan Jatuh Tempo</p>
+                      <p className="font-label-md text-primary font-semibold">Kamar {tenant.room?.number || "--"} - {tenant.name}</p>
+                      <p className="font-label-sm text-on-surface-variant">
+                        Akan Jatuh Tempo {tenant.dateDue ? `(${new Date(tenant.dateDue).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })})` : ""}
+                      </p>
                     </div>
                   </div>
-                  <a
-                    href={getWhatsAppUrl(tenant.phone)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-3 py-1.5 bg-surface-container rounded-lg font-label-sm text-primary font-bold hover:bg-surface-variant transition-all duration-300 active:scale-95 inline-block"
-                  >
-                    Ingatkan
-                  </a>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1.5 bg-brand-teal/10 text-brand-teal group-hover:bg-brand-teal group-hover:text-white rounded-lg font-label-sm font-bold transition-all duration-200 flex items-center gap-1">
+                      <span>Detail</span>
+                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                    </span>
+                  </div>
+                </Link>
               ))
             ) : (
               <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-center border-l-4 border-brand-teal animate-slide-up stagger-2">

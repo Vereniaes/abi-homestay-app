@@ -250,16 +250,14 @@ export default function Navigation() {
                           </span>
                         </div>
                       </div>
-                      <a
-                        href={getWhatsAppUrl(tenant.phone)}
-                        target="_blank"
-                        rel="noreferrer"
+                      <Link
+                        href={`/penghuni?search=${encodeURIComponent(tenant.room?.number || tenant.name)}`}
                         onClick={() => setIsNotificationOpen(false)}
-                        className="px-2.5 py-1 bg-secondary text-on-secondary rounded-lg text-[11px] font-semibold hover:bg-on-secondary-fixed-variant transition-all shrink-0 active:scale-95 flex items-center gap-1 shadow-sm"
+                        className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded-lg text-[11px] font-semibold hover:bg-brand-teal hover:text-white transition-all shrink-0 active:scale-95 flex items-center gap-1 shadow-sm"
                       >
-                        <span className="material-symbols-outlined text-xs">chat</span>
-                        <span>Ingatkan</span>
-                      </a>
+                        <span>Detail</span>
+                        <span className="material-symbols-outlined text-xs">chevron_right</span>
+                      </Link>
                     </div>
                   ))}
 
