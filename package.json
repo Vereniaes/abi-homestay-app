@@ -13,6 +13,7 @@
     "cap:sync": "npx cap sync",
     "cap:open": "npx cap open android",
     "build:apk": "npx cap sync && cd android && ./gradlew assembleDebug",
+    "test:e2e": "playwright test",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.6.8",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.43",
     "@types/nodemailer": "^8.0.1",
