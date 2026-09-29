@@ -24,3 +24,23 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: BREVO_API_KEY
+    secret: BREVO_API_KEY
+    availability:
+      - RUNTIME
+  - variable: BREVO_SENDER_EMAIL
+    value: "abihomestayreminder@gmail.com"
+    availability:
+      - RUNTIME
+  - variable: BREVO_SENDER_NAME
+    value: "ABI Homestay Reminder"
+    availability:
+      - RUNTIME
+  - variable: REMINDER_RECIPIENT_EMAIL
+    value: "titasaripratiwi8@gmail.com"
+    availability:
+      - RUNTIME
+  - variable: CRON_SECRET
+    secret: CRON_SECRET
+    availability:
+      - RUNTIME

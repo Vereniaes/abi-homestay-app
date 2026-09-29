@@ -9,8 +9,8 @@ Dokumen ini menjelaskan konsep, konfigurasi Gradle, serta langkah kompilasi yang
 Proses kompilasi Gradle telah **berhasil 100%** (`BUILD SUCCESSFUL`). File APK debug dapat ditemukan pada direktori berikut:
 
 - **Path File APK**:
-  `android/app/build/outputs/apk/debug/app-debug.apk`
-- **Ukuran File**: ± 3.9 MB
+  `android/app/build/outputs/apk/debug/Abi-Homestay.apk`
+- **Ukuran File**: ± 3.9 MB (4.043.241 bytes)
 
 ---
 

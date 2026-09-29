@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getPricingAndSettings, updatePricing, updateSetting, getCurrentUser, logoutUser, triggerDueRemindersAction } from "../actions";
+import { getPricingAndSettings, updatePricing, updateSetting, getCurrentUser, logoutUser, sendDuePaymentReminderEmailAction, triggerDueRemindersAction } from "../actions";
 import { clearClientCache } from "@/lib/client-cache";
 
 interface Pricing {
@@ -63,6 +63,8 @@ export default function PengaturanPage() {
   const [yearly, setYearly] = useState("28.000.000");
 
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -111,6 +113,30 @@ export default function PengaturanPage() {
     } else {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
+    }
+  };
+
+  // helper --------------------------------------------------------------------------
+  // function untuk memicu pengiriman email rekap jatuh tempo sewa ke email pengelola
+  // input param : none
+  // output : void
+  // end of helper ------------------------------------------------------------------
+  const handleTriggerEmailReminder = async () => {
+    setIsSendingEmail(true);
+    setEmailFeedback(null);
+    try {
+      const result = await sendDuePaymentReminderEmailAction();
+      setEmailFeedback({
+        success: result.success,
+        message: result.message,
+      });
+    } catch (error: any) {
+      setEmailFeedback({
+        success: false,
+        message: error?.message || "Gagal memproses pengiriman email.",
+      });
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -245,6 +271,56 @@ export default function PengaturanPage() {
           <h3 className="font-label-md text-label-md text-on-surface-variant mb-3 px-2 uppercase tracking-wider">
             Tampilan &amp; Sistem
           </h3>
+
+          {/* Email Reminder Trigger Row */}
+          <div className="w-full flex items-center justify-between p-3 rounded-lg bg-surface-container-lowest">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center text-primary-container">
+                <span className="material-symbols-outlined">mail</span>
+              </div>
+              <div className="text-left">
+                <p className="font-body-md text-body-md font-medium text-primary-container">
+                  Pengingat Email
+                </p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">
+                  Kirim rekap jatuh tempo ke titasaripratiwi8@gmail.com
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleTriggerEmailReminder}
+              disabled={isSendingEmail}
+              className="px-3 py-1.5 bg-brand-teal text-white hover:bg-brand-teal/90 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm"
+            >
+              <span className={`material-symbols-outlined text-sm ${isSendingEmail ? "animate-spin" : ""}`}>
+                {isSendingEmail ? "sync" : "send"}
+              </span>
+              <span>{isSendingEmail ? "Mengirim..." : "Kirim Rekap"}</span>
+            </button>
+          </div>
+
+          {emailFeedback && (
+            <div className={`mx-3 mb-2 p-2.5 rounded-lg text-xs font-medium border flex items-center gap-2 ${
+              emailFeedback.success
+                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                : "bg-error-container/20 text-error border-error-container"
+            }`}>
+              <span className="material-symbols-outlined text-sm shrink-0">
+                {emailFeedback.success ? "check_circle" : "error"}
+              </span>
+              <span className="flex-1">{emailFeedback.message}</span>
+              <button
+                type="button"
+                onClick={() => setEmailFeedback(null)}
+                className="opacity-70 hover:opacity-100"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+          )}
+
+          <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
 
           <div className="w-full flex items-center justify-between p-3 rounded-lg bg-surface-container-lowest">
             <div className="flex items-center gap-4">

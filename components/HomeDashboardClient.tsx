@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import AnimatedCounter from "./AnimatedCounter";
 import { getWhatsAppUrl } from "@/lib/phone";
-import { getCurrentUser } from "@/app/actions";
+import { getCurrentUser, sendDuePaymentReminderEmailAction } from "@/app/actions";
 import { getClientCache, setClientCache } from "@/lib/client-cache";
 
 interface MonthlyTrend {
@@ -288,6 +288,33 @@ export default function HomeDashboardClient({
     return `Tahun ${selectedYear}`;
   }, [filterMode, selectedDailyDate, selectedWeek, selectedMonth, selectedSemester, selectedYear]);
 
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{ success: boolean; message: string } | null>(null);
+
+  // helper --------------------------------------------------------------------------
+  // function untuk memicu pengiriman email rekap jatuh tempo dari halaman Beranda
+  // input param : none
+  // output : void
+  // end of helper ------------------------------------------------------------------
+  const handleSendEmailReminder = async () => {
+    setIsSendingEmail(true);
+    setEmailFeedback(null);
+    try {
+      const result = await sendDuePaymentReminderEmailAction();
+      setEmailFeedback({
+        success: result.success,
+        message: result.message,
+      });
+    } catch (error: any) {
+      setEmailFeedback({
+        success: false,
+        message: error?.message || "Gagal memproses pengiriman email.",
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   return (
     <>
       <main className="pt-28 md:pt-8 px-4 md:px-6 max-w-container-max mx-auto pb-28 md:pb-12">
@@ -376,9 +403,44 @@ export default function HomeDashboardClient({
 
         {/* 2. Jatuh Tempo & Perhatian Section (HANYA Penghuni Jatuh Tempo) */}
         <section className="mb-8">
-          <h2 className="font-headline-md text-headline-md text-primary mb-4 animate-slide-up stagger-2">
-            Jatuh Tempo &amp; Perhatian
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-headline-md text-headline-md text-primary animate-slide-up stagger-2">
+              Jatuh Tempo &amp; Perhatian
+            </h2>
+            {stats.dueTenants.length > 0 && (
+              <button
+                type="button"
+                onClick={handleSendEmailReminder}
+                disabled={isSendingEmail}
+                className="px-3 py-1.5 bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 rounded-xl font-label-sm text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 border border-brand-teal/20 shadow-sm disabled:opacity-50"
+              >
+                <span className={`material-symbols-outlined text-sm ${isSendingEmail ? "animate-spin" : ""}`}>
+                  {isSendingEmail ? "sync" : "mail"}
+                </span>
+                <span>{isSendingEmail ? "Mengirim..." : "Email Rekap"}</span>
+              </button>
+            )}
+          </div>
+
+          {emailFeedback && (
+            <div className={`mb-3 p-3 rounded-xl text-xs font-medium border flex items-center gap-2 ${
+              emailFeedback.success
+                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                : "bg-error-container/20 text-error border-error-container"
+            }`}>
+              <span className="material-symbols-outlined text-sm shrink-0">
+                {emailFeedback.success ? "check_circle" : "error"}
+              </span>
+              <span className="flex-1">{emailFeedback.message}</span>
+              <button
+                type="button"
+                onClick={() => setEmailFeedback(null)}
+                className="opacity-70 hover:opacity-100"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+          )}
           <div className="flex flex-col gap-3">
             {stats.dueTenants.length > 0 ? (
               stats.dueTenants.map((tenant: any) => (

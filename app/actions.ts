@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import { sanitizePhoneDigits, formatPhoneDisplay } from "@/lib/phone";
 
 import { calculateDueDate, getRentAmount } from "@/lib/rent";
-import { sendDueReminderEmail } from "@/lib/email";
+import { sendDueReminderReport, sendDueReminderEmail } from "@/lib/email";
 
 // helper --------------------------------------------------------------------------
 // function untuk mengambil statistik dashboard beranda dengan eksekusi kueri paralel
@@ -1482,6 +1482,25 @@ export async function deleteUser(userId: string) {
 }
 
 // helper --------------------------------------------------------------------------
+// function untuk memicu pengiriman email pengingat jatuh tempo sewa ke pengelola
+// input param : none
+// output : object { success: boolean, message: string, count: number }
+// end of helper ------------------------------------------------------------------
+export async function sendDuePaymentReminderEmailAction() {
+  try {
+    const user = await getCurrentUser();
+    if (user && user.role === "VIEW") {
+      return { success: false, message: "Akses ditolak: Role VIEW tidak memiliki izin kirim pengingat.", count: 0 };
+    }
+
+    return await sendDueReminderReport();
+  } catch (error: any) {
+    console.error("Error in sendDuePaymentReminderEmailAction:", error);
+    return { success: false, message: error?.message || "Gagal memproses email pengingat.", count: 0 };
+  }
+}
+
+// helper --------------------------------------------------------------------------
 // function untuk memicu pengiriman email pengingat H-3 jatuh tempo secara manual
 // input param : none
 // output : object { success: boolean, count: number, details: array, message: string }
@@ -1560,5 +1579,3 @@ export async function triggerDueRemindersAction() {
     return { success: false, message: error?.message || "Gagal memproses email pengingat." };
   }
 }
-
-
