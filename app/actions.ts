@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import { sanitizePhoneDigits, formatPhoneDisplay } from "@/lib/phone";
 
 import { calculateDueDate, getRentAmount } from "@/lib/rent";
-import { sendDueReminderReport, sendDueReminderEmail } from "@/lib/email";
+import { sendDueReminderReport, sendDueReminderEmail, processTenantDueReminders } from "@/lib/email";
 
 // helper --------------------------------------------------------------------------
 // function untuk mengambil statistik dashboard beranda dengan eksekusi kueri paralel
@@ -929,7 +929,18 @@ export async function addTransaction(formData: FormData) {
     let roomId = null;
     if (tenantId) {
       const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-      if (tenant) roomId = tenant.roomId;
+      if (tenant) {
+        roomId = tenant.roomId;
+        // Sinkronisasi opsional tanggal jatuh tempo ke siklus berikutnya saat pemasukan sewa dicatat
+        const syncDateDue = formData.get("syncDateDue") === "true";
+        if (syncDateDue && tenant.dateDue) {
+          const nextDue = calculateDueDate(tenant.dateDue, rentType || tenant.rentType);
+          await prisma.tenant.update({
+            where: { id: tenant.id },
+            data: { dateDue: nextDue },
+          });
+        }
+      }
     }
 
     const transaction = await prisma.transaction.create({
@@ -948,6 +959,7 @@ export async function addTransaction(formData: FormData) {
     });
 
     revalidatePath("/laporan");
+    revalidatePath("/penghuni");
     return transaction;
   } catch (error) {
     console.error("Error in addTransaction:", error);
@@ -1501,9 +1513,9 @@ export async function sendDuePaymentReminderEmailAction() {
 }
 
 // helper --------------------------------------------------------------------------
-// function untuk memicu pengiriman email pengingat H-3 jatuh tempo secara manual
+// function untuk memicu pengiriman email pengingat personal siklus lengkap ke penghuni
 // input param : none
-// output : object { success: boolean, count: number, details: array, message: string }
+// output : object { success: boolean, totalSent: number, h5, h3, h1, h0, hp1, hp3, hp7, message: string }
 // end of helper ------------------------------------------------------------------
 export async function triggerDueRemindersAction() {
   try {
@@ -1512,67 +1524,36 @@ export async function triggerDueRemindersAction() {
       return { success: false, message: "Akses ditolak: Anda tidak memiliki izin memicu email pengingat." };
     }
 
-    const now = new Date();
-    const targetDate = new Date(now);
-    targetDate.setDate(targetDate.getDate() + 3);
+    const [h5, h3, h1, h0, hp1, hp3, hp7] = await Promise.all([
+      processTenantDueReminders(5),
+      processTenantDueReminders(3),
+      processTenantDueReminders(1),
+      processTenantDueReminders(0),
+      processTenantDueReminders(-1),
+      processTenantDueReminders(-3),
+      processTenantDueReminders(-7),
+    ]);
 
-    const year = targetDate.getFullYear();
-    const month = targetDate.getMonth();
-    const day = targetDate.getDate();
-
-    const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
-    const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
-
-    const tenants = await prisma.tenant.findMany({
-      where: {
-        status: "ACTIVE",
-        dateDue: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        email: {
-          not: null,
-        },
-      },
-      include: {
-        room: true,
-      },
-    });
-
-    const validTenants = tenants.filter((t) => t.email && t.email.trim().length > 0 && t.email.includes("@"));
-
-    let sentCount = 0;
-    const results = [];
-
-    for (const tenant of validTenants) {
-      const emailData = {
-        tenantName: tenant.name,
-        tenantEmail: tenant.email!.trim(),
-        roomNumber: tenant.room?.number || "--",
-        dateDue: tenant.dateDue || targetDate,
-        rentAmount: tenant.rentAmount,
-        rentType: tenant.rentType,
-      };
-
-      const res = await sendDueReminderEmail(emailData);
-      if (res.success) sentCount++;
-
-      results.push({
-        name: tenant.name,
-        email: tenant.email,
-        room: tenant.room?.number,
-        success: res.success,
-        simulated: res.simulated || false,
-        error: res.error,
-      });
-    }
+    const totalSent =
+      h5.sentCount +
+      h3.sentCount +
+      h1.sentCount +
+      h0.sentCount +
+      hp1.sentCount +
+      hp3.sentCount +
+      hp7.sentCount;
 
     return {
       success: true,
-      totalMatched: validTenants.length,
-      sentCount,
-      results,
-      message: `Berhasil memproses pengingat H-3: ${sentCount} email terkirim.`,
+      h5,
+      h3,
+      h1,
+      h0,
+      hp1,
+      hp3,
+      hp7,
+      totalSent,
+      message: `Berhasil memproses pengingat personal: ${totalSent} email terkirim (H-5: ${h5.sentCount}, H-3: ${h3.sentCount}, H-1: ${h1.sentCount}, Hari H: ${h0.sentCount}, H+1: ${hp1.sentCount}, H+3: ${hp3.sentCount}, H+7: ${hp7.sentCount}).`,
     };
   } catch (error: any) {
     console.error("Error in triggerDueRemindersAction:", error);

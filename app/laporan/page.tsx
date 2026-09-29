@@ -67,6 +67,7 @@ export default function LaporanPage() {
   const [expenseDescription, setExpenseDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [syncDateDue, setSyncDateDue] = useState(true);
   const [isLoading, setIsLoading] = useState(() => !hasValidCache);
 
   // Struk viewer & Edit states
@@ -271,6 +272,7 @@ export default function LaporanPage() {
     formData.append("tenantId", selectedTenantId);
     formData.append("rentType", txType === "EXPENSE" ? expenseDescription : paymentType);
     formData.append("amount", amount);
+    formData.append("syncDateDue", syncDateDue ? "true" : "false");
     
     if (selectedFile) {
       const fileToUpload = await compressImage(selectedFile);
@@ -284,9 +286,11 @@ export default function LaporanPage() {
       setExpenseDescription("");
       setSelectedFile(null);
       setSelectedTenantId("");
+      setSyncDateDue(true);
       // Invalidasi cache agar data baru langsung terlihat
       clearClientCache("transactions");
       clearClientCache("dashboardStats");
+      clearClientCache("tenants");
       setCurrentPage(1);
       await fetchData();
     });
@@ -934,6 +938,21 @@ export default function LaporanPage() {
                   className="w-full rounded-xl border border-outline-variant bg-surface px-4 py-3 text-body-lg font-semibold text-on-surface focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
                 />
               </div>
+
+              {txType === "INCOME" && selectedTenantId && (
+                <div className="flex items-center gap-3 p-3 bg-secondary/10 rounded-xl border border-secondary/20">
+                  <input
+                    type="checkbox"
+                    id="syncDateDueCheckbox"
+                    checked={syncDateDue}
+                    onChange={(e) => setSyncDateDue(e.target.checked)}
+                    className="h-4 w-4 rounded border-outline-variant text-secondary focus:ring-secondary accent-secondary cursor-pointer"
+                  />
+                  <label htmlFor="syncDateDueCheckbox" className="text-body-sm font-medium text-on-surface cursor-pointer select-none">
+                    Perpanjang tanggal jatuh tempo penghuni ke siklus berikutnya otomatis
+                  </label>
+                </div>
+              )}
 
               <div>
                 <label className="block text-label-md text-on-surface-variant mb-2">Upload Bukti Transaksi (Vercel Blob)</label>

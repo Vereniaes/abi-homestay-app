@@ -654,7 +654,7 @@ function PenghuniContent() {
 
                 <div className="col-span-2 bg-surface-container-low rounded-2xl p-4 border border-surface-variant flex items-center justify-between">
                   <div>
-                    <p className="font-label-sm text-label-sm text-outline mb-1">Email Pengingat (H-3)</p>
+                    <p className="font-label-sm text-label-sm text-outline mb-1">Email Pengingat (H-5 s/d H+7)</p>
                     <p className="font-body-md text-body-md text-primary font-semibold">
                       {selectedTenant.email ? selectedTenant.email : "-"}
                     </p>
@@ -786,7 +786,7 @@ function PenghuniContent() {
 
                 <div>
                   <label className="font-label-sm text-on-surface-variant mb-1 block">
-                    Email <span className="text-outline text-xs">(Opsional - untuk notifikasi H-3)</span>
+                    Email <span className="text-outline text-xs">(Opsional - untuk notifikasi otomatis H-5 s/d H+7)</span>
                   </label>
                   <input
                     type="email"
@@ -971,7 +971,7 @@ function PenghuniContent() {
 
                 <div>
                   <label className="font-label-sm text-on-surface-variant mb-1 block font-semibold">
-                    Email Penghuni <span className="text-outline font-normal text-xs">(Opsional)</span>
+                    Email Penghuni <span className="text-outline font-normal text-xs">(Opsional - notifikasi otomatis H-5 s/d H+7)</span>
                   </label>
                   <input
                     type="email"

@@ -49,12 +49,13 @@ Berdasarkan data terbaru dari Google Cloud Console dan permintaan pengguna ("i w
 ## 3. Rencana Kerja & Status Eksekusi
 
 - [x] Konfirmasi pendekatan dengan pengguna: **Opsi 1 (Setup Cloud Scheduler & Secret Manager untuk project `abi-homestay`)**.
-- [x] Perbarui [setup_cloud_scheduler.sh](file:///home/vereniaes/project/abi-homestay-app/setup_cloud_scheduler.sh) dengan `PROJECT_ID="abi-homestay"` dan IAM binding untuk `firebase-app-hosting-compute@abi-homestay.iam.gserviceaccount.com`.
+- [x] Perbarui skrip setup dan IAM binding untuk `firebase-app-hosting-compute@abi-homestay.iam.gserviceaccount.com`.
 - [x] Validasi integritas kode TypeScript (`npx tsc --noEmit` lolos 0 error).
 - [x] Eksekusi perintah setup di Google Cloud Console / Cloud Shell untuk project `abi-homestay` (Job: `abi-homestay-due-reminder` berstatus `ENABLED`).
 - [x] Selesaikan rekonsiliasi merge conflict 4 berkas (`app/actions.ts`, `app/pengaturan/page.tsx`, `components/HomeDashboardClient.tsx`, `lib/email.ts`).
 - [x] Verifikasi build produksi (`npm run build`) berhasil 100% (semua 11 rute termasuk `/api/cron/due-notif` dan `/api/cron/reminders` siap).
-- [ ] Pengguna menjalankan commit dan push ke `origin main`.
+- [x] Deployment Firebase App Hosting berhasil tayang (*Revision: Ready=True*).
+- [x] Uji pemicuan endpoint produksi `/api/cron/due-notif` via domain `hosted.app` berhasil (`HTTP 200: Email rekap terkirim ke titasaripratiwi8@gmail.com untuk 9 penghuni`).
 
 ---
 
