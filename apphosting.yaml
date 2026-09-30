@@ -29,7 +29,7 @@ env:
     availability:
       - RUNTIME
   - variable: BREVO_SENDER_EMAIL
-    value: "abihomestayreminder@gmail.com"
+    value: "abedenstein12@gmail.com"
     availability:
       - RUNTIME
   - variable: BREVO_SENDER_NAME

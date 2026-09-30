@@ -119,7 +119,7 @@ function formatRupiah(amount: number): string {
 // end of helper ------------------------------------------------------------------
 export async function sendBrevoEmail(params: SendEmailParams) {
   const apiKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || "abihomestayreminder@gmail.com";
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "abedenstein12@gmail.com";
   const senderName = process.env.BREVO_SENDER_NAME || "ABI Homestay Reminder";
 
   if (!apiKey) {
