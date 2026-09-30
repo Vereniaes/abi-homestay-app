@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getTenants, addTenant, updateTenant, deleteTenant, hardDeleteTenant, reactivateTenant, getCurrentUser } from "../actions";
+import { getTenants, addTenant, updateTenant, deleteTenant, hardDeleteTenant, reactivateTenant, getCurrentUser, sendManualTenantReminderAction } from "../actions";
 import { sanitizePhoneDigits, formatPhoneDisplay, formatLiveInputPhone, getWhatsAppUrl } from "@/lib/phone";
 import { calculateDueDate, formatRentTypeLabel } from "@/lib/rent";
 import { getClientCache, setClientCache, isCacheStale, clearClientCache } from "@/lib/client-cache";
@@ -84,6 +84,8 @@ function PenghuniContent() {
   const [reactivateDateIn, setReactivateDateIn] = useState("");
   const [reactivateRentType, setReactivateRentType] = useState("MONTHLY");
   const [reactivateError, setReactivateError] = useState("");
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [reminderFeedback, setReminderFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -346,6 +348,32 @@ function PenghuniContent() {
         setEditError(result?.message || "Gagal memperbarui data penghuni.");
       }
     });
+  };
+
+  const handleSendManualReminder = async (tenant: Tenant) => {
+    if (!tenant.email || !tenant.email.includes("@")) {
+      setReminderFeedback({
+        success: false,
+        message: `Penghuni ${tenant.name} belum memiliki email. Silakan isi email di menu Edit Penghuni terlebih dahulu.`,
+      });
+      return;
+    }
+    setIsSendingReminder(true);
+    setReminderFeedback(null);
+    try {
+      const res = await sendManualTenantReminderAction(tenant.id);
+      setReminderFeedback({
+        success: res.success,
+        message: res.message,
+      });
+    } catch (err: any) {
+      setReminderFeedback({
+        success: false,
+        message: err?.message || "Gagal mengirim email pengingat.",
+      });
+    } finally {
+      setIsSendingReminder(false);
+    }
   };
 
   return (
@@ -612,15 +640,42 @@ function PenghuniContent() {
               </div>
 
               {!isViewOnly && (
-                <a
-                  href={getWhatsAppUrl(selectedTenant.phone)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-4 rounded-xl bg-[#25D366] text-white font-label-md text-label-md flex items-center justify-center gap-2 mb-6 shadow-[0_4px_16px_rgba(37,211,102,0.3)] active:scale-95 transition-transform font-bold"
-                >
-                  <span className="material-symbols-outlined text-lg">chat</span>
-                  Hubungi via WhatsApp
-                </a>
+                <div className="flex flex-col gap-2 mb-6">
+                  <div className="flex gap-2.5">
+                    <a
+                      href={getWhatsAppUrl(selectedTenant.phone)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-3.5 rounded-xl bg-[#25D366] text-white font-label-md text-label-md flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(37,211,102,0.3)] active:scale-95 transition-transform font-bold"
+                    >
+                      <span className="material-symbols-outlined text-lg">chat</span>
+                      WhatsApp
+                    </a>
+                    <button
+                      type="button"
+                      disabled={isSendingReminder}
+                      onClick={() => handleSendManualReminder(selectedTenant)}
+                      className="flex-1 py-3.5 rounded-xl bg-brand-teal text-white font-label-md text-label-md flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform font-bold disabled:opacity-50"
+                    >
+                      <span className={`material-symbols-outlined text-lg ${isSendingReminder ? "animate-spin" : ""}`}>
+                        {isSendingReminder ? "sync" : "forward_to_inbox"}
+                      </span>
+                      {isSendingReminder ? "Mengirim..." : "Kirim Email"}
+                    </button>
+                  </div>
+                  {reminderFeedback && (
+                    <div className={`p-2.5 rounded-xl border text-xs font-medium flex items-center gap-2 animate-slide-up ${
+                      reminderFeedback.success
+                        ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                        : "bg-error-container/20 text-error border-error-container"
+                    }`}>
+                      <span className="material-symbols-outlined text-sm shrink-0">
+                        {reminderFeedback.success ? "check_circle" : "error"}
+                      </span>
+                      <span>{reminderFeedback.message}</span>
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-4 mb-6">

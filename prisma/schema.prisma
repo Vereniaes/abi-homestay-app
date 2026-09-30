@@ -95,9 +95,10 @@ model Pricing {
 }
 
 model Setting {
-  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  autoWhatsappReminders Boolean  @default(true)
-  updatedAt             DateTime @updatedAt
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  autoWhatsappReminders  Boolean  @default(true)
+  reminderRecipientEmail String?  @default("titasaripratiwi8@gmail.com")
+  updatedAt              DateTime @updatedAt
 }
 
 enum Role {
@@ -110,6 +111,7 @@ model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   username  String   @unique
   name      String
+  email     String?
   password  String
   role      Role     @default(VIEW)
   status    Boolean  @default(true)

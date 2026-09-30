@@ -7,6 +7,7 @@ interface User {
   id: string;
   username: string;
   name: string;
+  email?: string | null;
   role: "ADMIN" | "EDIT" | "VIEW";
   status: boolean;
   createdAt: Date;
@@ -27,6 +28,7 @@ export default function UsersPage() {
   // Form states
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"ADMIN" | "EDIT" | "VIEW">("VIEW");
   const [status, setStatus] = useState("Aktif");
@@ -48,6 +50,7 @@ export default function UsersPage() {
     setEditingUser(null);
     setUsername("");
     setName("");
+    setEmail("");
     setPassword("");
     setRole("VIEW");
     setStatus("Aktif");
@@ -58,6 +61,7 @@ export default function UsersPage() {
     setEditingUser(user);
     setUsername(user.username);
     setName(user.name);
+    setEmail(user.email || "");
     setPassword(""); // Password kosong saat edit (opsional)
     setRole(user.role);
     setStatus(user.status ? "Aktif" : "Nonaktif");
@@ -69,6 +73,7 @@ export default function UsersPage() {
     const formData = new FormData();
     formData.append("username", username);
     formData.append("name", name);
+    formData.append("email", email);
     formData.append("password", password);
     formData.append("role", role);
     formData.append("status", status);
@@ -113,7 +118,8 @@ export default function UsersPage() {
   const filteredUsers = useMemo(() => {
     return users.filter((u) => 
       u.name.toLowerCase().includes(search.toLowerCase()) || 
-      u.username.toLowerCase().includes(search.toLowerCase())
+      u.username.toLowerCase().includes(search.toLowerCase()) ||
+      (u.email && u.email.toLowerCase().includes(search.toLowerCase()))
     );
   }, [users, search]);
 
@@ -180,6 +186,7 @@ export default function UsersPage() {
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">No</th>
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Username</th>
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Nama Lengkap</th>
+                <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Email</th>
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Role Access</th>
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-center">Aksi</th>
@@ -191,6 +198,16 @@ export default function UsersPage() {
                   <td className="px-6 py-4 text-body-md text-on-surface">{idx + 1}</td>
                   <td className="px-6 py-4 text-body-md font-medium text-primary">{user.username}</td>
                   <td className="px-6 py-4 text-body-md text-on-surface">{user.name}</td>
+                  <td className="px-6 py-4 text-body-md text-on-surface">
+                    {user.email ? (
+                      <span className="flex items-center gap-1.5 text-on-surface">
+                        <span className="material-symbols-outlined text-[16px] text-outline">mail</span>
+                        {user.email}
+                      </span>
+                    ) : (
+                      <span className="text-outline text-label-sm italic">-</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-md border ${getRoleBadgeStyle(user.role)}`}>
                       {user.role}
@@ -215,7 +232,7 @@ export default function UsersPage() {
               ))}
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
+                  <td colSpan={7} className="px-6 py-12 text-center text-on-surface-variant">
                     Tidak ada data pengguna.
                   </td>
                 </tr>
@@ -232,6 +249,12 @@ export default function UsersPage() {
                 <div>
                   <h3 className="font-headline-md text-body-lg text-primary">{user.name}</h3>
                   <p className="font-body-md text-label-sm text-outline">@{user.username}</p>
+                  {user.email && (
+                    <p className="font-body-md text-label-sm text-on-surface-variant flex items-center gap-1 mt-0.5">
+                      <span className="material-symbols-outlined text-[14px] text-outline">mail</span>
+                      {user.email}
+                    </p>
+                  )}
                 </div>
                 <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${getRoleBadgeStyle(user.role)}`}>
                   {user.role}
@@ -308,6 +331,17 @@ export default function UsersPage() {
                     onChange={(e) => setName(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md"
                     placeholder="Nama Lengkap"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-label-sm text-on-surface-variant mb-1 block">Email Pengguna</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-surface-variant focus:border-secondary focus:ring-1 focus:ring-secondary outline-none text-body-md"
+                    placeholder="email@contoh.com (opsional)"
                   />
                 </div>
 

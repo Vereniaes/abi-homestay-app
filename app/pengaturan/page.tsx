@@ -17,12 +17,14 @@ interface Pricing {
 interface Setting {
   id: string;
   autoWhatsappReminders: boolean;
+  reminderRecipientEmail?: string;
 }
 
 interface UserSession {
   id: string;
   username: string;
   name: string;
+  email?: string | null;
   role: "ADMIN" | "EDIT" | "VIEW";
 }
 
@@ -65,6 +67,9 @@ export default function PengaturanPage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [summaryEmail, setSummaryEmail] = useState("titasaripratiwi8@gmail.com");
+  const [isSavingSetting, setIsSavingSetting] = useState(false);
+  const [settingFeedback, setSettingFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -86,11 +91,36 @@ export default function PengaturanPage() {
       setYearly(data.pricing.yearlyPrice.toLocaleString("id-ID"));
     }
     if (data.setting) {
-      setSetting(data.setting);
+      setSetting(data.setting as any);
+      if ((data.setting as any).reminderRecipientEmail) {
+        setSummaryEmail((data.setting as any).reminderRecipientEmail);
+      }
     }
     const user = await getCurrentUser();
     if (user) {
       setCurrentUser(user);
+    }
+  };
+
+  const handleSaveSummaryEmail = async () => {
+    if (!summaryEmail || !summaryEmail.includes("@")) {
+      setSettingFeedback({ success: false, message: "Alamat email tidak valid." });
+      return;
+    }
+    setIsSavingSetting(true);
+    setSettingFeedback(null);
+    try {
+      const res = await updateSetting(setting?.id || "default", setting?.autoWhatsappReminders ?? true, summaryEmail);
+      if (res) {
+        setSetting(res as any);
+        setSettingFeedback({ success: true, message: "Alamat email penerima rekap berhasil diperbarui." });
+      } else {
+        setSettingFeedback({ success: false, message: "Gagal menyimpan email pengelola." });
+      }
+    } catch (err: any) {
+      setSettingFeedback({ success: false, message: err?.message || "Terjadi kesalahan." });
+    } finally {
+      setIsSavingSetting(false);
     }
   };
 
@@ -182,6 +212,12 @@ export default function PengaturanPage() {
         <div className="inline-flex items-center gap-2 bg-secondary text-on-secondary font-label-sm text-label-sm px-3 py-1 rounded-full shadow-sm">
           {currentUser ? currentUser.role : "Administrator"}
         </div>
+        {currentUser?.email && (
+          <p className="font-body-md text-label-sm text-on-surface-variant mt-2 flex items-center gap-1 justify-center">
+            <span className="material-symbols-outlined text-[14px]">mail</span>
+            {currentUser.email}
+          </p>
+        )}
       </section>
 
       {/* Settings Cards */}
@@ -282,8 +318,8 @@ export default function PengaturanPage() {
                 <p className="font-body-md text-body-md font-medium text-primary-container">
                   Pengingat Email
                 </p>
-                <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Kirim rekap jatuh tempo ke titasaripratiwi8@gmail.com
+                <p className="font-label-sm text-label-sm text-on-surface-variant truncate max-w-[200px] md:max-w-none">
+                  Kirim rekap tagihan ke {summaryEmail}
                 </p>
               </div>
             </div>
@@ -319,6 +355,31 @@ export default function PengaturanPage() {
               </button>
             </div>
           )}
+
+          <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
+
+          <button
+            type="button"
+            onClick={() => router.push("/users")}
+            className="menu-item w-full flex items-center justify-between p-3 rounded-lg hover:premium-glow group bg-surface-container-lowest text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center text-primary-container group-hover:bg-secondary/10 group-hover:text-secondary transition-colors">
+                <span className="material-symbols-outlined">manage_accounts</span>
+              </div>
+              <div className="text-left">
+                <p className="font-body-md text-body-md font-medium text-primary-container group-hover:text-secondary transition-colors">
+                  Manajemen Pengguna
+                </p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">
+                  Daftar user, peran (role), dan email pengelola
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-outline-variant group-hover:text-secondary transition-colors">
+              chevron_right
+            </span>
+          </button>
 
           <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
 
@@ -604,10 +665,46 @@ export default function PengaturanPage() {
             <div className="px-md pb-6">
               <h2 className="font-headline-md text-headline-md text-primary-container mb-4 flex items-center gap-2 font-bold">
                 <span className="material-symbols-outlined text-brand-teal">mark_email_read</span>
-                Email Pengingat Otomatis (H-3)
+                Email Pengingat &amp; Rekap Tagihan
               </h2>
 
               <div className="space-y-4">
+                {/* Form Input Email Penerima Rekap */}
+                <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high space-y-3">
+                  <label className="block text-body-sm font-bold text-primary">
+                    Email Penerima Rekap Tagihan (Summary)
+                  </label>
+                  <p className="text-xs text-on-surface-variant">
+                    Alamat email pengelola yang menerima laporan rekapitulasi harian jatuh tempo sewa:
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      required
+                      value={summaryEmail}
+                      onChange={(e) => setSummaryEmail(e.target.value)}
+                      placeholder="titasaripratiwi8@gmail.com"
+                      disabled={currentUser?.role === "VIEW"}
+                      className="flex-1 rounded-xl border border-outline-variant bg-surface px-4 py-2.5 text-body-sm font-medium text-on-surface focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+                    />
+                    {currentUser?.role !== "VIEW" && (
+                      <button
+                        type="button"
+                        disabled={isSavingSetting}
+                        onClick={handleSaveSummaryEmail}
+                        className="px-4 py-2.5 bg-secondary text-on-secondary rounded-xl text-xs font-bold hover:bg-secondary/90 transition-all active:scale-95 disabled:opacity-50 shrink-0"
+                      >
+                        {isSavingSetting ? "Menyimpan..." : "Simpan"}
+                      </button>
+                    )}
+                  </div>
+                  {settingFeedback && (
+                    <p className={`text-xs font-medium ${settingFeedback.success ? "text-emerald-600 dark:text-emerald-400" : "text-error"}`}>
+                      {settingFeedback.message}
+                    </p>
+                  )}
+                </div>
+
                 {/* Status Card */}
                 <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-start gap-3.5">
                   <div className="w-9 h-9 rounded-xl bg-brand-teal text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
@@ -616,7 +713,7 @@ export default function PengaturanPage() {
                   <div>
                     <h4 className="font-title-sm font-bold text-primary">Jadwal Pengiriman Otomatis</h4>
                     <p className="text-body-sm text-on-surface-variant mt-1 leading-relaxed">
-                      Sistem memeriksa database setiap hari pukul <strong>08:00 WIB</strong> (via Vercel Cron). Seluruh penghuni aktif yang jatuh tempo tepat 3 hari lagi dan memiliki alamat email akan menerima email pengingat tagihan sewa.
+                      Sistem memeriksa database setiap hari pukul <strong>08:00 WIB</strong> (via Cloud Scheduler &amp; Brevo API). Pengingat dikirim ke masing-masing penghuni (H-5, H-3, H-1, Hari H, H+1, H+3, H+7) dan laporan rekap dikirim ke email pengelola di atas.
                     </p>
                   </div>
                 </div>

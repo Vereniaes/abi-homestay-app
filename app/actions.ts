@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import { sanitizePhoneDigits, formatPhoneDisplay } from "@/lib/phone";
 
 import { calculateDueDate, getRentAmount } from "@/lib/rent";
-import { sendDueReminderReport, sendDueReminderEmail, processTenantDueReminders } from "@/lib/email";
+import { sendDueReminderReport, sendDueReminderEmail, processTenantDueReminders, sendSingleTenantReminder } from "@/lib/email";
 
 // helper --------------------------------------------------------------------------
 // function untuk mengambil statistik dashboard beranda dengan eksekusi kueri paralel
@@ -1106,7 +1106,15 @@ export async function getPricingAndSettings() {
       setting = await prisma.setting.create({
         data: {
           autoWhatsappReminders: true,
-        },
+          reminderRecipientEmail: "titasaripratiwi8@gmail.com",
+        } as any,
+      });
+    } else if (!(setting as any).reminderRecipientEmail) {
+      setting = await prisma.setting.update({
+        where: { id: setting.id },
+        data: {
+          reminderRecipientEmail: "titasaripratiwi8@gmail.com",
+        } as any,
       });
     }
 
@@ -1125,6 +1133,7 @@ export async function getPricingAndSettings() {
       setting: {
         id: "default",
         autoWhatsappReminders: true,
+        reminderRecipientEmail: "titasaripratiwi8@gmail.com",
       },
     };
   }
@@ -1181,11 +1190,15 @@ export async function updatePricing(
 }
 
 // helper --------------------------------------------------------------------------
-// function untuk merubah setting Auto-WhatsApp Reminders
-// input param : settingId (string), autoWhatsapp (boolean)
+// function untuk merubah setting Auto-WhatsApp Reminders dan email penerima rekap
+// input param : settingId (string), autoWhatsappReminders (boolean), reminderRecipientEmail? (string)
 // output : object Setting
 // end of helper ------------------------------------------------------------------
-export async function updateSetting(settingId: string, autoWhatsappReminders: boolean) {
+export async function updateSetting(
+  settingId: string,
+  autoWhatsappReminders: boolean,
+  reminderRecipientEmail?: string
+) {
   try {
     const user = await getCurrentUser();
     if (user && user.role === "VIEW") {
@@ -1193,18 +1206,22 @@ export async function updateSetting(settingId: string, autoWhatsappReminders: bo
       return null;
     }
     let setting = await prisma.setting.findFirst();
+    const updateData: any = { autoWhatsappReminders };
+    if (reminderRecipientEmail !== undefined) {
+      updateData.reminderRecipientEmail = reminderRecipientEmail.trim();
+    }
+
     if (!setting) {
       setting = await prisma.setting.create({
         data: {
           autoWhatsappReminders,
-        },
+          reminderRecipientEmail: reminderRecipientEmail?.trim() || "titasaripratiwi8@gmail.com",
+        } as any,
       });
     } else {
       setting = await prisma.setting.update({
         where: { id: setting.id },
-        data: {
-          autoWhatsappReminders,
-        },
+        data: updateData as any,
       });
     }
     revalidatePath("/pengaturan");
@@ -1212,6 +1229,27 @@ export async function updateSetting(settingId: string, autoWhatsappReminders: bo
   } catch (error) {
     console.error("Error in updateSetting:", error);
     return null;
+  }
+}
+
+// helper --------------------------------------------------------------------------
+// function untuk mengirim email pengingat secara manual ke penghuni tertentu
+// input param : tenantId (string)
+// output : object { success: boolean, message: string }
+// end of helper ------------------------------------------------------------------
+export async function sendManualTenantReminderAction(tenantId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (user && user.role === "VIEW") {
+      return { success: false, message: "Akses ditolak: Anda tidak memiliki izin mengirim email pengingat." };
+    }
+    if (!tenantId) {
+      return { success: false, message: "ID penghuni tidak valid." };
+    }
+    return await sendSingleTenantReminder(tenantId);
+  } catch (error: any) {
+    console.error("Error in sendManualTenantReminderAction:", error);
+    return { success: false, message: error?.message || "Gagal memproses pengiriman email pengingat." };
   }
 }
 
@@ -1288,6 +1326,7 @@ export async function loginUser(formData: FormData) {
       id: user.id,
       username: user.username,
       name: user.name,
+      email: (user as any).email || null,
       role: user.role,
     };
 
@@ -1359,6 +1398,7 @@ export async function getUsers() {
         id: true,
         username: true,
         name: true,
+        email: true,
         role: true,
         status: true,
         createdAt: true,
@@ -1385,6 +1425,7 @@ export async function createUser(formData: FormData) {
 
     const username = (formData.get("username") as string || "").trim();
     const name = (formData.get("name") as string || "").trim();
+    const email = (formData.get("email") as string || "").trim() || null;
     const password = (formData.get("password") as string || "").trim();
     const role = (formData.get("role") as any) || "VIEW";
     const statusStr = formData.get("status") as string;
@@ -1403,6 +1444,7 @@ export async function createUser(formData: FormData) {
       data: {
         username,
         name,
+        email,
         password,
         role,
         status,
@@ -1410,6 +1452,7 @@ export async function createUser(formData: FormData) {
     });
 
     revalidatePath("/users");
+    revalidatePath("/pengaturan");
     return { success: true, message: "User berhasil ditambahkan." };
   } catch (error) {
     console.error("Error in createUser:", error);
@@ -1433,6 +1476,7 @@ export async function updateUser(formData: FormData) {
     if (!id) return { success: false, message: "ID User tidak valid." };
 
     const name = (formData.get("name") as string || "").trim();
+    const email = (formData.get("email") as string || "").trim();
     const password = (formData.get("password") as string || "").trim();
     const role = (formData.get("role") as any) || "VIEW";
     const statusStr = formData.get("status") as string;
@@ -1444,6 +1488,7 @@ export async function updateUser(formData: FormData) {
 
     const updateData: any = {
       name,
+      email: email || null,
       role,
       status,
     };
@@ -1458,6 +1503,7 @@ export async function updateUser(formData: FormData) {
     });
 
     revalidatePath("/users");
+    revalidatePath("/pengaturan");
     return { success: true, message: "User berhasil diperbarui." };
   } catch (error) {
     console.error("Error in updateUser:", error);

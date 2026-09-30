@@ -9,13 +9,14 @@
 
 import { useEffect, useState, useTransition, useMemo, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { getRooms, updateRoomInventory, getCurrentUser } from "../actions";
+import { getRooms, updateRoomInventory, getCurrentUser, sendManualTenantReminderAction } from "../actions";
 import { getClientCache, setClientCache, isCacheStale } from "@/lib/client-cache";
 
 interface Tenant {
   id: string;
   name: string;
   phone: string;
+  email?: string | null;
   dateIn: Date;
   dateDue: Date | null;
 }
@@ -52,6 +53,8 @@ function KamarContent() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [inventoryStates, setInventoryStates] = useState<string[]>(["baik", "baik", "baik", "baik", "baik"]);
   const [isPending, startTransition] = useTransition();
+  const [sendingTenantReminderId, setSendingTenantReminderId] = useState<string | null>(null);
+  const [tenantReminderFeedback, setTenantReminderFeedback] = useState<{ [tenantId: string]: { success: boolean; message: string } }>({});
 
   useEffect(() => {
     if (!currentUser) {
@@ -125,6 +128,35 @@ function KamarContent() {
     const newStates = [...inventoryStates];
     newStates[index] = state;
     setInventoryStates(newStates);
+  };
+
+  const handleSendTenantReminder = async (tenant: Tenant) => {
+    if (!tenant.email || !tenant.email.includes("@")) {
+      alert(`Penghuni ${tenant.name} belum memiliki alamat email. Silakan isi alamat email terlebih dahulu di menu Penghuni.`);
+      return;
+    }
+    setSendingTenantReminderId(tenant.id);
+    setTenantReminderFeedback((prev) => ({ ...prev, [tenant.id]: undefined as any }));
+    try {
+      const res = await sendManualTenantReminderAction(tenant.id);
+      setTenantReminderFeedback((prev) => ({
+        ...prev,
+        [tenant.id]: {
+          success: res.success,
+          message: res.message,
+        },
+      }));
+    } catch (err: any) {
+      setTenantReminderFeedback((prev) => ({
+        ...prev,
+        [tenant.id]: {
+          success: false,
+          message: err?.message || "Gagal mengirim email pengingat.",
+        },
+      }));
+    } finally {
+      setSendingTenantReminderId(null);
+    }
   };
 
   const handleSaveChanges = () => {
@@ -342,23 +374,69 @@ function KamarContent() {
                   </h3>
                   <div className="flex flex-col gap-3">
                     {selectedRoom.tenants.map((tenant, idx) => (
-                      <div key={tenant.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/20 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-secondary-container text-secondary flex items-center justify-center font-headline-md shrink-0">
-                          <span className="material-symbols-outlined">person</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className="font-body-md text-body-md text-primary font-semibold truncate">
-                              {tenant.name}
-                            </p>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface-variant text-on-surface-variant shrink-0">
-                              Penghuni {idx + 1}
-                            </span>
+                      <div key={tenant.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-secondary-container text-secondary flex items-center justify-center font-headline-md shrink-0">
+                            <span className="material-symbols-outlined">person</span>
                           </div>
-                          <p className="font-label-sm text-label-sm text-on-surface-variant truncate">
-                            {tenant.phone}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <p className="font-body-md text-body-md text-primary font-semibold truncate">
+                                {tenant.name}
+                              </p>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface-variant text-on-surface-variant shrink-0">
+                                Penghuni {idx + 1}
+                              </span>
+                            </div>
+                            <p className="font-label-sm text-label-sm text-on-surface-variant truncate">
+                              {tenant.phone}
+                            </p>
+                            <p className="font-label-sm text-label-sm text-outline truncate flex items-center gap-1 mt-0.5">
+                              <span className="material-symbols-outlined text-[13px]">mail</span>
+                              {tenant.email ? tenant.email : <span className="text-error/80 italic">Belum ada email</span>}
+                            </p>
+                          </div>
                         </div>
+
+                        {/* Action Buttons for Tenant */}
+                        <div className="flex items-center gap-2 pt-1 border-t border-outline-variant/10">
+                          <button
+                            type="button"
+                            disabled={sendingTenantReminderId === tenant.id || isViewOnly}
+                            onClick={() => handleSendTenantReminder(tenant)}
+                            className="flex-1 py-2 px-3 rounded-lg bg-teal-500/10 text-teal-800 dark:text-teal-200 border border-teal-500/20 hover:bg-teal-500/20 text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            <span className={`material-symbols-outlined text-sm ${sendingTenantReminderId === tenant.id ? "animate-spin" : ""}`}>
+                              {sendingTenantReminderId === tenant.id ? "sync" : "forward_to_inbox"}
+                            </span>
+                            <span>{sendingTenantReminderId === tenant.id ? "Mengirim..." : "Kirim Email Pengingat"}</span>
+                          </button>
+
+                          {tenant.phone && tenant.phone !== "-" && (
+                            <a
+                              href={`https://wa.me/${tenant.phone.replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="py-2 px-3 rounded-lg bg-surface-variant hover:bg-surface-container-high text-on-surface-variant text-xs font-bold flex items-center gap-1 transition-all"
+                            >
+                              <span className="material-symbols-outlined text-sm">chat</span>
+                              <span>WhatsApp</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {tenantReminderFeedback[tenant.id] && (
+                          <div className={`p-2 rounded-lg text-xs font-medium border flex items-center gap-1.5 ${
+                            tenantReminderFeedback[tenant.id].success
+                              ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                              : "bg-error-container/20 text-error border-error-container"
+                          }`}>
+                            <span className="material-symbols-outlined text-sm shrink-0">
+                              {tenantReminderFeedback[tenant.id].success ? "check_circle" : "error"}
+                            </span>
+                            <span className="flex-1">{tenantReminderFeedback[tenant.id].message}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

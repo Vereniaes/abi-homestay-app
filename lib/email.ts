@@ -695,7 +695,12 @@ export async function processTenantDueReminders(daysAhead: number): Promise<Batc
 // end of helper ------------------------------------------------------------------
 export async function sendDueReminderReport(customRecipientEmail?: string) {
   try {
-    const recipientEmail = customRecipientEmail || process.env.REMINDER_RECIPIENT_EMAIL || "titasaripratiwi8@gmail.com";
+    let recipientEmail = customRecipientEmail;
+    if (!recipientEmail) {
+      const setting = await prisma.setting.findFirst();
+      recipientEmail = (setting as any)?.reminderRecipientEmail || process.env.REMINDER_RECIPIENT_EMAIL || "titasaripratiwi8@gmail.com";
+    }
+    const finalRecipientEmail: string = recipientEmail || "titasaripratiwi8@gmail.com";
 
     // 1. Eksekusi pengingat personal H-5, H-3, H-1, Hari H (D-Day), dan keterlambatan H+1, H+3, H+7
     const [h5Result, h3Result, h1Result, h0Result, hp1Result, hp3Result, hp7Result] = await Promise.all([
@@ -768,7 +773,7 @@ export async function sendDueReminderReport(customRecipientEmail?: string) {
     ]);
 
     const sendResult = await sendBrevoEmail({
-      to: [{ email: recipientEmail, name: "Pengelola ABI Homestay" }],
+      to: [{ email: finalRecipientEmail, name: "Pengelola ABI Homestay" }],
       subject,
       htmlContent,
     });
@@ -790,7 +795,7 @@ export async function sendDueReminderReport(customRecipientEmail?: string) {
 
     return {
       success: true,
-      message: `Email rekap berhasil dikirim ke ${recipientEmail}. Notifikasi personal terkirim: H-5 (${h5Result.sentCount}), H-3 (${h3Result.sentCount}), H-1 (${h1Result.sentCount}), Hari H (${h0Result.sentCount}), H+1 (${hp1Result.sentCount}), H+3 (${hp3Result.sentCount}), H+7 (${hp7Result.sentCount}).`,
+      message: `Email rekap berhasil dikirim ke ${finalRecipientEmail}. Notifikasi personal terkirim: H-5 (${h5Result.sentCount}), H-3 (${h3Result.sentCount}), H-1 (${h1Result.sentCount}), Hari H (${h0Result.sentCount}), H+1 (${hp1Result.sentCount}), H+3 (${hp3Result.sentCount}), H+7 (${hp7Result.sentCount}).`,
       count: dueTenants.length,
       h5: h5Result,
       h3: h3Result,
@@ -808,5 +813,67 @@ export async function sendDueReminderReport(customRecipientEmail?: string) {
       message: errorMsg,
       count: 0,
     };
+  }
+}
+
+// helper --------------------------------------------------------------------------
+// function untuk mengirim email pengingat jatuh tempo secara manual ke satu penghuni spesifik
+// input param : tenantId (string)
+// output : Promise<{ success: boolean; message: string; messageId?: string }>
+// end of helper ------------------------------------------------------------------
+export async function sendSingleTenantReminder(tenantId: string): Promise<{
+  success: boolean;
+  message: string;
+  messageId?: string;
+}> {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { room: true },
+    });
+
+    if (!tenant) {
+      return { success: false, message: "Data penghuni tidak ditemukan." };
+    }
+
+    const email = tenant.email?.trim();
+    if (!email || !email.includes("@")) {
+      return {
+        success: false,
+        message: `Penghuni ${tenant.name} belum memiliki alamat email yang valid. Silakan lengkapi email terlebih dahulu di form edit penghuni.`,
+      };
+    }
+
+    const now = new Date();
+    const dueDate = tenant.dateDue ? new Date(tenant.dateDue) : now;
+    const diffTime = dueDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const res = await sendDueReminderEmail({
+      tenantName: tenant.name,
+      tenantEmail: email,
+      roomNumber: tenant.room?.number || "-",
+      dateDue: dueDate,
+      rentAmount: tenant.rentAmount,
+      rentType: tenant.rentType,
+      daysLeft,
+    });
+
+    if (!res.success) {
+      return {
+        success: false,
+        message: res.error || "Gagal mengirim email pengingat melalui server email.",
+      };
+    }
+
+    return {
+      success: true,
+      message: `Email pengingat berhasil dikirimkan ke ${tenant.name} (${email}).`,
+      messageId: res.messageId,
+    };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Terjadi kesalahan internal saat mengirim email.";
+    console.error("Error in sendSingleTenantReminder:", error);
+    return { success: false, message: errorMsg };
   }
 }
