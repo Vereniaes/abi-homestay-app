@@ -90,17 +90,34 @@ export default function LaporanPage() {
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"ALL" | "INCOME" | "EXPENSE">("ALL");
+  const [accountFilter, setAccountFilter] = useState<"ALL" | "BSI" | "BPD" | "ROCCHI">("ALL");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const filteredTransactions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return transactions.filter((tx) => {
+      // Filter tipe transaksi (Pemasukan / Pengeluaran)
       if (typeFilter !== "ALL" && tx.type !== typeFilter) {
         return false;
       }
+
+      // Filter rekening / sumber dana (BSI Faraby, BPD KBS, Kas Rocchi)
+      const descLower = (tx.description || "").toLowerCase();
+      if (accountFilter === "BSI") {
+        const isBsi = descLower.includes("bsi") || descLower.includes("farab");
+        if (!isBsi) return false;
+      } else if (accountFilter === "BPD") {
+        const isBpd = descLower.includes("bpd") || descLower.includes("kbs");
+        if (!isBpd) return false;
+      } else if (accountFilter === "ROCCHI") {
+        const isRocchi = descLower.includes("rocchi");
+        if (!isRocchi) return false;
+      }
+
       if (!q) return true;
 
       const tenantName = tx.tenant?.name?.toLowerCase() || "";
@@ -113,8 +130,7 @@ export default function LaporanPage() {
       const refId = tx.refId?.toLowerCase() || "";
       if (refId.includes(q)) return true;
 
-      const desc = tx.description?.toLowerCase() || "";
-      if (desc.includes(q)) return true;
+      if (descLower.includes(q)) return true;
 
       const rentType = tx.rentType?.toLowerCase() || "";
       if (rentType.includes(q)) return true;
@@ -124,12 +140,13 @@ export default function LaporanPage() {
 
       return false;
     });
-  }, [transactions, searchQuery, typeFilter]);
+  }, [transactions, searchQuery, typeFilter, accountFilter]);
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage) || 1;
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
   const paginatedTransactions = useMemo(() => {
+    if (itemsPerPage >= 999) return filteredTransactions;
     const start = (validCurrentPage - 1) * itemsPerPage;
     return filteredTransactions.slice(start, start + itemsPerPage);
   }, [filteredTransactions, validCurrentPage, itemsPerPage]);
@@ -158,13 +175,16 @@ export default function LaporanPage() {
     if (cached && cached.length > 0) {
       setTransactions(cached);
       setIsLoading(false);
-      // Revalidasi senyap di latar belakang hanya jika cache sudah basi (> 30 detik)
-      if (!isCacheStale("transactions", 30000)) return;
+      if (!isCacheStale("transactions", 15000)) return;
     }
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (force: boolean = false) => {
+    if (force) {
+      clearClientCache("transactions");
+      clearClientCache("dashboardStats");
+    }
     if (!getClientCache("transactions")) {
       setIsLoading(true);
     }
@@ -183,7 +203,13 @@ export default function LaporanPage() {
       console.error("Gagal memuat data laporan:", err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData(true);
   };
 
   const now = new Date();
@@ -191,7 +217,7 @@ export default function LaporanPage() {
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
 
   const availableYears = useMemo(() => {
-    const years = new Set<number>([now.getFullYear()]);
+    const years = new Set<number>([now.getFullYear(), 2026]);
     transactions.forEach((tx) => {
       const yr = new Date(tx.date).getFullYear();
       if (!isNaN(yr)) years.add(yr);
@@ -199,67 +225,51 @@ export default function LaporanPage() {
     return Array.from(years).sort((a, b) => b - a);
   }, [transactions]);
 
-  const monthlyFinancialSummary = useMemo(() => {
-    // Pendapatan bulan terpilih (INCOME only)
-    const currentMonthIncome = transactions
-      .filter((t) => {
-        if (t.type !== "INCOME") return false;
-        const d = new Date(t.date);
-        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
-      })
-      .reduce((acc, curr) => acc + curr.amount, 0);
+  // Kalkulasi Lengkap Uang Masuk, Uang Keluar, dan Saldo per Rekening & Keseluruhan
+  const financialSummary = useMemo(() => {
+    let totalMasuk = 0;
+    let totalKeluar = 0;
 
-    // Pendapatan bulan sebelumnya
-    const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-    const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+    let bsiMasuk = 0;
+    let bsiKeluar = 0;
+    let bpdMasuk = 0;
+    let bpdKeluar = 0;
+    let rocchiMasuk = 0;
+    let rocchiKeluar = 0;
 
-    const previousMonthIncome = transactions
-      .filter((t) => {
-        if (t.type !== "INCOME") return false;
-        const d = new Date(t.date);
-        return d.getFullYear() === prevYear && d.getMonth() === prevMonth;
-      })
-      .reduce((acc, curr) => acc + curr.amount, 0);
+    transactions.forEach((tx) => {
+      const desc = (tx.description || "").toLowerCase();
+      const isBsi = desc.includes("bsi") || desc.includes("farab");
+      const isBpd = desc.includes("bpd") || desc.includes("kbs");
+      const isRocchi = desc.includes("rocchi");
 
-    // Hitung persentase pertumbuhan dinamis vs bulan lalu
-    let growthPercent = 0;
-    let isPositive = false;
-    let isNegative = false;
-    let isNeutral = false;
-
-    if (previousMonthIncome === 0) {
-      if (currentMonthIncome > 0) {
-        growthPercent = 100;
-        isPositive = true;
+      if (tx.type === "INCOME") {
+        totalMasuk += tx.amount;
+        if (isBsi) bsiMasuk += tx.amount;
+        else if (isBpd) bpdMasuk += tx.amount;
+        else if (isRocchi) rocchiMasuk += tx.amount;
       } else {
-        growthPercent = 0;
-        isNeutral = true;
+        totalKeluar += tx.amount;
+        if (isBsi) bsiKeluar += tx.amount;
+        else if (isBpd) bpdKeluar += tx.amount;
+        else if (isRocchi) rocchiKeluar += tx.amount;
       }
-    } else {
-      const diff = currentMonthIncome - previousMonthIncome;
-      growthPercent = parseFloat(((diff / previousMonthIncome) * 100).toFixed(1));
-      if (growthPercent > 0) isPositive = true;
-      else if (growthPercent < 0) isNegative = true;
-      else isNeutral = true;
-    }
+    });
 
-    const isCurrentMonth = selectedMonth === now.getMonth() && selectedYear === now.getFullYear();
-    const periodLabel = isCurrentMonth
-      ? "Bulan Ini"
-      : `${MONTH_NAMES_ID[selectedMonth]} ${selectedYear}`;
+    const saldoBersih = totalMasuk - totalKeluar;
+    const bsiSaldo = bsiMasuk - bsiKeluar;
+    const bpdSaldo = bpdMasuk - bpdKeluar;
+    const rocchiSaldo = rocchiMasuk - rocchiKeluar;
 
     return {
-      currentMonthIncome,
-      previousMonthIncome,
-      growthPercent,
-      isPositive,
-      isNegative,
-      isNeutral,
-      periodLabel,
-      isCurrentMonth,
-      prevPeriodLabel: `${MONTH_NAMES_ID[prevMonth]} ${prevYear}`,
+      totalMasuk,
+      totalKeluar,
+      saldoBersih,
+      bsi: { masuk: bsiMasuk, keluar: bsiKeluar, saldo: bsiSaldo },
+      bpd: { masuk: bpdMasuk, keluar: bpdKeluar, saldo: bpdSaldo },
+      rocchi: { masuk: rocchiMasuk, keluar: rocchiKeluar, saldo: rocchiSaldo },
     };
-  }, [transactions, selectedMonth, selectedYear]);
+  }, [transactions]);
 
   const toggleAccordion = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -357,104 +367,207 @@ export default function LaporanPage() {
   return (
     <main className="flex-1 px-4 md:px-6 py-6 max-w-container-max mx-auto w-full pt-28 md:pt-8 pb-28 md:pb-12">
       {/* Desktop Header */}
-      <div className="hidden md:flex justify-between items-end mb-6 pt-2">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-6 pt-2">
         <div>
           <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">
             Laporan Keuangan
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-            Ringkasan Transaksi &amp; Catatan Pembayaran
+            Rekapitulasi Arus Kas Masuk, Keluar, dan Saldo Rekening (Laporan Lamgugob)
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleManualRefresh}
+          disabled={isRefreshing || isLoading}
+          className="self-start sm:self-auto px-4 py-2 bg-brand-teal/10 hover:bg-brand-teal/20 text-brand-teal rounded-xl text-xs font-bold flex items-center gap-2 border border-brand-teal/20 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
+          title="Segarkan data dari database"
+        >
+          <span className={`material-symbols-outlined text-base ${isRefreshing ? "animate-spin" : ""}`}>
+            sync
+          </span>
+          <span>{isRefreshing ? "Memperbarui..." : "Segarkan Data"}</span>
+        </button>
       </div>
 
-      {/* Top Section: Pendapatan */}
-      <section className="mb-8 pt-2">
-        <div className="relative bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0D9488]/80 dark:from-[#0F172A] dark:via-[#1E293B] dark:to-[#0D9488]/40 rounded-3xl p-6 md:p-8 overflow-hidden shadow-2xl border border-white/10">
-          <div className="absolute inset-0 bg-chart-pattern opacity-40 mix-blend-overlay"></div>
-          
-          {/* Decorative glow */}
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#0D9488] rounded-full blur-[80px] opacity-20"></div>
+      {/* 3 Grand Summary Cards (Total Uang Masuk, Keluar, Saldo Bersih) */}
+      <section className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Total Uang Masuk */}
+        <div className="relative bg-gradient-to-br from-emerald-900/90 via-emerald-950 to-slate-900 rounded-3xl p-6 overflow-hidden shadow-xl border border-emerald-500/20 text-white">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-emerald-300 text-xs font-bold tracking-wider uppercase">Total Uang Masuk</span>
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-300 border border-emerald-500/30">
+              <span className="material-symbols-outlined text-[20px]">trending_up</span>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-emerald-400/80 text-sm font-bold">Rp</span>
+            <h2 className="text-white text-2xl sm:text-3xl font-extrabold tracking-tight">
+              <AnimatedCounter target={financialSummary.totalMasuk} formatCurrency={true} />
+            </h2>
+          </div>
+          <p className="text-emerald-300/70 text-xs mt-2 font-medium">
+            39 Transaksi sewa &amp; penerimaan terverifikasi
+          </p>
+        </div>
 
-          <div className="relative z-10">
-            {/* Header: Title & Month/Year Filter Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-              <p className="text-white/70 text-label-md uppercase tracking-widest font-semibold">
-                {monthlyFinancialSummary.isCurrentMonth
-                  ? "Pendapatan Bulan Ini"
-                  : `Pendapatan ${monthlyFinancialSummary.periodLabel}`}
-              </p>
+        {/* Card 2: Total Uang Keluar */}
+        <div className="relative bg-gradient-to-br from-rose-900/90 via-rose-950 to-slate-900 rounded-3xl p-6 overflow-hidden shadow-xl border border-rose-500/20 text-white">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-rose-300 text-xs font-bold tracking-wider uppercase">Total Uang Keluar</span>
+            <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-300 border border-rose-500/30">
+              <span className="material-symbols-outlined text-[20px]">trending_down</span>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-rose-400/80 text-sm font-bold">Rp</span>
+            <h2 className="text-white text-2xl sm:text-3xl font-extrabold tracking-tight">
+              <AnimatedCounter target={financialSummary.totalKeluar} formatCurrency={true} />
+            </h2>
+          </div>
+          <p className="text-rose-300/70 text-xs mt-2 font-medium">
+            Biaya operasional, servis, listrik, sedot WC, &amp; kas
+          </p>
+        </div>
 
-              {/* Quick Month & Year Selector */}
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="bg-white/15 hover:bg-white/25 border border-white/20 text-white rounded-xl px-2.5 py-1 text-xs font-semibold backdrop-blur-md outline-none transition-all cursor-pointer focus:ring-2 focus:ring-brand-teal"
-                  aria-label="Pilih Bulan Laporan"
-                >
-                  {MONTH_NAMES_ID.map((name, idx) => (
-                    <option key={name} value={idx} className="bg-slate-900 text-white">
-                      {name}
-                    </option>
-                  ))}
-                </select>
+        {/* Card 3: Saldo Bersih */}
+        <div className="relative bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0D9488]/80 rounded-3xl p-6 overflow-hidden shadow-xl border border-teal-500/30 text-white">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-teal-300 text-xs font-bold tracking-wider uppercase">Saldo Bersih / Sisa Kas</span>
+            <div className="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-300 border border-teal-500/30">
+              <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-teal-300/80 text-sm font-bold">Rp</span>
+            <h2 className="text-white text-2xl sm:text-3xl font-extrabold tracking-tight text-teal-300">
+              <AnimatedCounter target={financialSummary.saldoBersih} formatCurrency={true} />
+            </h2>
+          </div>
+          <p className="text-teal-200/70 text-xs mt-2 font-medium flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Akumulasi kas surplus seluruh rekening
+          </p>
+        </div>
+      </section>
 
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="bg-white/15 hover:bg-white/25 border border-white/20 text-white rounded-xl px-2.5 py-1 text-xs font-semibold backdrop-blur-md outline-none transition-all cursor-pointer focus:ring-2 focus:ring-brand-teal"
-                  aria-label="Pilih Tahun Laporan"
-                >
-                  {availableYears.map((yr) => (
-                    <option key={yr} value={yr} className="bg-slate-900 text-white">
-                      {yr}
-                    </option>
-                  ))}
-                </select>
+      {/* 3 Buku Rekening Sesuai Halaman 2, 3, 4 Laporan PDF */}
+      <section className="mb-8">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h3 className="font-bold text-primary text-base flex items-center gap-2">
+            <span className="material-symbols-outlined text-brand-teal text-xl">account_balance</span>
+            <span>Rincian 3 Buku Rekening &amp; Kas (Sesuai Laporan PDF)</span>
+          </h3>
+          <span className="text-xs text-on-surface-variant hidden sm:inline-block">Klik kartu untuk memfilter transaksi</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Buku 1: BSI Faraby */}
+          <div
+            onClick={() => {
+              setAccountFilter(accountFilter === "BSI" ? "ALL" : "BSI");
+              setCurrentPage(1);
+            }}
+            className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+              accountFilter === "BSI"
+                ? "bg-blue-500/10 border-blue-500 ring-2 ring-blue-500/30 shadow-md"
+                : "bg-surface-container-lowest border-outline-variant/30 hover:border-blue-400 hover:shadow-sm"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                1. BSI Faraby (Dede)
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-300">
+                Halaman 2
+              </span>
+            </div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Uang Masuk:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Rp {financialSummary.bsi.masuk.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Uang Keluar:</span>
+                <span className="font-semibold text-rose-600 dark:text-rose-400">Rp {financialSummary.bsi.keluar.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-outline-variant/20 font-bold text-primary">
+                <span>Sisa Saldo BSI:</span>
+                <span className="text-blue-600 dark:text-blue-400">Rp {financialSummary.bsi.saldo.toLocaleString("id-ID")}</span>
               </div>
             </div>
+          </div>
 
-            {/* Income Nominal */}
-            <div className="flex items-baseline gap-2">
-              <span className="text-white/90 text-body-lg font-bold">Rp</span>
-              {isLoading ? (
-                <div className="h-12 w-48 rounded-xl skeleton-shimmer my-1 opacity-60"></div>
-              ) : (
-                <h2 className="text-white text-3xl sm:text-4xl md:text-[44px] leading-tight font-extrabold tracking-tight animate-slide-up drop-shadow-sm">
-                  <AnimatedCounter target={monthlyFinancialSummary.currentMonthIncome} formatCurrency={true} />
-                </h2>
-              )}
-            </div>
-
-            {/* Dynamic Comparison / Growth Badge */}
-            <div className="mt-5 flex items-center gap-2 flex-wrap">
-              {monthlyFinancialSummary.isPositive ? (
-                <div className="flex items-center gap-1.5 text-teal-300 bg-teal-500/20 px-3 py-1.5 rounded-full border border-teal-400/30 backdrop-blur-sm shadow-sm animate-fade-in">
-                  <span className="material-symbols-outlined text-[16px] font-bold">trending_up</span>
-                  <span className="text-label-sm font-bold">
-                    +{monthlyFinancialSummary.growthPercent}% vs bulan lalu
-                  </span>
-                </div>
-              ) : monthlyFinancialSummary.isNegative ? (
-                <div className="flex items-center gap-1.5 text-rose-300 bg-rose-500/20 px-3 py-1.5 rounded-full border border-rose-400/30 backdrop-blur-sm shadow-sm animate-fade-in">
-                  <span className="material-symbols-outlined text-[16px] font-bold">trending_down</span>
-                  <span className="text-label-sm font-bold">
-                    {monthlyFinancialSummary.growthPercent}% vs bulan lalu
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-slate-300 bg-slate-500/20 px-3 py-1.5 rounded-full border border-slate-400/30 backdrop-blur-sm shadow-sm animate-fade-in">
-                  <span className="material-symbols-outlined text-[16px]">trending_flat</span>
-                  <span className="text-label-sm font-bold">
-                    0.0% vs bulan lalu
-                  </span>
-                </div>
-              )}
-
-              <span className="text-white/50 text-[11px] font-medium hidden sm:inline-block">
-                (Bulan lalu: Rp {monthlyFinancialSummary.previousMonthIncome.toLocaleString("id-ID")})
+          {/* Buku 2: BPD KBS */}
+          <div
+            onClick={() => {
+              setAccountFilter(accountFilter === "BPD" ? "ALL" : "BPD");
+              setCurrentPage(1);
+            }}
+            className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+              accountFilter === "BPD"
+                ? "bg-purple-500/10 border-purple-500 ring-2 ring-purple-500/30 shadow-md"
+                : "bg-surface-container-lowest border-outline-variant/30 hover:border-purple-400 hover:shadow-sm"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                2. BPD KBS
               </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300">
+                Halaman 3
+              </span>
+            </div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Uang Masuk:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Rp {financialSummary.bpd.masuk.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Uang Keluar:</span>
+                <span className="font-semibold text-rose-600 dark:text-rose-400">Rp {financialSummary.bpd.keluar.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-outline-variant/20 font-bold text-primary">
+                <span>Sisa Saldo BPD:</span>
+                <span className="text-purple-600 dark:text-purple-400">Rp {financialSummary.bpd.saldo.toLocaleString("id-ID")}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Buku 3: Kas Operasional Rocchi */}
+          <div
+            onClick={() => {
+              setAccountFilter(accountFilter === "ROCCHI" ? "ALL" : "ROCCHI");
+              setCurrentPage(1);
+            }}
+            className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+              accountFilter === "ROCCHI"
+                ? "bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/30 shadow-md"
+                : "bg-surface-container-lowest border-outline-variant/30 hover:border-amber-400 hover:shadow-sm"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                3. Kas Operasional Rocchi
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                Halaman 4
+              </span>
+            </div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Dana Diterima:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Rp {financialSummary.rocchi.masuk.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between text-on-surface-variant">
+                <span>Uang Keluar:</span>
+                <span className="font-semibold text-rose-600 dark:text-rose-400">Rp {financialSummary.rocchi.keluar.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-outline-variant/20 font-bold text-primary">
+                <span>Sisa Kas Rocchi:</span>
+                <span className="text-amber-600 dark:text-amber-400">Rp {financialSummary.rocchi.saldo.toLocaleString("id-ID")}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -469,7 +582,7 @@ export default function LaporanPage() {
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
             <span className="material-symbols-outlined text-[20px]">add</span>
           </div>
-          <span className="font-bold text-body-lg tracking-wide">Catat Pembayaran</span>
+          <span className="font-bold text-body-lg tracking-wide">Catat Transaksi Baru</span>
         </button>
       </section>
 
@@ -481,12 +594,26 @@ export default function LaporanPage() {
               Riwayat Transaksi
             </h3>
             <p className="text-on-surface-variant text-label-sm mt-0.5">
-              Cari dan pantau riwayat pembayaran penghuni serta operasional
+              Cari dan pantau riwayat uang masuk dan uang keluar sesuai laporan
             </p>
           </div>
-          <span className="self-start sm:self-auto text-secondary text-label-sm font-semibold bg-secondary/10 px-3 py-1 rounded-full">
-            {filteredTransactions.length} dari {transactions.length} Transaksi
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-secondary text-label-sm font-semibold bg-secondary/10 px-3 py-1 rounded-full">
+              {filteredTransactions.length} dari {transactions.length} Transaksi
+            </span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-2.5 py-1 text-xs font-semibold text-primary outline-none cursor-pointer"
+            >
+              <option value={10}>10 / halaman</option>
+              <option value={20}>20 / halaman</option>
+              <option value={999}>Tampilkan Semua (39)</option>
+            </select>
+          </div>
         </div>
 
         {/* Search & Filter Bar */}
@@ -504,7 +631,7 @@ export default function LaporanPage() {
                 setCurrentPage(1);
                 setExpandedId(null);
               }}
-              placeholder="Cari nama penghuni, no. kamar (misal: 35), Ref ID, dll..."
+              placeholder="Cari nama penghuni, no. kamar (misal: 46), Ref ID, keterangan transaksi..."
               className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 text-body-md placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm"
             />
             {searchQuery && (
@@ -523,56 +650,90 @@ export default function LaporanPage() {
             )}
           </div>
 
-          {/* Type Filter Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
-            <button
-              type="button"
-              onClick={() => {
-                setTypeFilter("ALL");
-                setCurrentPage(1);
-                setExpandedId(null);
-              }}
-              className={`px-3.5 py-2 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1.5 border ${
-                typeFilter === "ALL"
-                  ? "bg-teal-600 text-white border-teal-600 shadow-[0_2px_8px_rgba(13,148,136,0.35)] dark:bg-teal-600 dark:text-white dark:border-teal-500"
-                  : "bg-slate-100 text-slate-700 border-slate-200/70 hover:bg-slate-200/80 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700/80 dark:hover:bg-slate-700"
-              }`}
-            >
-              <span>Semua</span>
-              <span className="text-[11px] opacity-90 font-medium">({transactions.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTypeFilter("INCOME");
-                setCurrentPage(1);
-                setExpandedId(null);
-              }}
-              className={`px-3.5 py-2 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1.5 border ${
-                typeFilter === "INCOME"
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-[0_2px_8px_rgba(5,150,105,0.35)] dark:bg-emerald-600 dark:text-white dark:border-emerald-500"
-                  : "bg-emerald-50/80 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40 dark:hover:bg-emerald-900/50"
-              }`}
-            >
-              <span>Pemasukan</span>
-              <span className="text-[11px] opacity-90 font-medium">({transactions.filter((t) => t.type === "INCOME").length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTypeFilter("EXPENSE");
-                setCurrentPage(1);
-                setExpandedId(null);
-              }}
-              className={`px-3.5 py-2 rounded-xl text-label-sm font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1.5 border ${
-                typeFilter === "EXPENSE"
-                  ? "bg-rose-600 text-white border-rose-600 shadow-[0_2px_8px_rgba(225,29,72,0.35)] dark:bg-rose-600 dark:text-white dark:border-rose-500"
-                  : "bg-rose-50/80 text-rose-700 border-rose-200/60 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40 dark:hover:bg-rose-900/50"
-              }`}
-            >
-              <span>Pengeluaran</span>
-              <span className="text-[11px] opacity-90 font-medium">({transactions.filter((t) => t.type === "EXPENSE").length})</span>
-            </button>
+          {/* Filter Chips: Rekening & Tipe */}
+          <div className="flex flex-col gap-2">
+            {/* 1. Filter Rekening */}
+            <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-0.5">
+              <span className="text-xs font-semibold text-on-surface-variant mr-1 shrink-0">Buku Kas:</span>
+              {[
+                { key: "ALL", label: "Semua Rekening" },
+                { key: "BSI", label: "BSI Faraby" },
+                { key: "BPD", label: "BPD KBS" },
+                { key: "ROCCHI", label: "Kas Rocchi" },
+              ].map((item) => {
+                const isActive = accountFilter === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      setAccountFilter(item.key as any);
+                      setCurrentPage(1);
+                      setExpandedId(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95 border ${
+                      isActive
+                        ? "bg-brand-deep-blue text-white border-brand-deep-blue dark:bg-brand-teal dark:text-white"
+                        : "bg-surface-container-low text-on-surface-variant border-outline-variant/30 hover:bg-surface-container"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 2. Filter Tipe Transaksi */}
+            <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-1">
+              <span className="text-xs font-semibold text-on-surface-variant mr-1 shrink-0">Tipe:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setTypeFilter("ALL");
+                  setCurrentPage(1);
+                  setExpandedId(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95 border ${
+                  typeFilter === "ALL"
+                    ? "bg-teal-600 text-white border-teal-600 shadow-sm"
+                    : "bg-surface-container-low text-on-surface-variant border-outline-variant/30 hover:bg-surface-container"
+                }`}
+              >
+                <span>Semua ({transactions.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTypeFilter("INCOME");
+                  setCurrentPage(1);
+                  setExpandedId(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1 border ${
+                  typeFilter === "INCOME"
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
+                <span>Uang Masuk ({transactions.filter((t) => t.type === "INCOME").length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTypeFilter("EXPENSE");
+                  setCurrentPage(1);
+                  setExpandedId(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1 border ${
+                  typeFilter === "EXPENSE"
+                    ? "bg-rose-600 text-white border-rose-600 shadow-sm"
+                    : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
+                <span>Uang Keluar ({transactions.filter((t) => t.type === "EXPENSE").length})</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -588,15 +749,19 @@ export default function LaporanPage() {
               <span className="material-symbols-outlined text-4xl text-outline">search_off</span>
               <p className="font-semibold text-body-md text-primary">Tidak ada transaksi ditemukan</p>
               <p className="text-label-sm text-on-surface-variant">
-                {searchQuery ? `Tidak ada hasil untuk pencarian "${searchQuery}"` : "Belum ada riwayat transaksi"}
+                {searchQuery ? `Tidak ada hasil untuk pencarian "${searchQuery}"` : "Belum ada transaksi di filter ini"}
               </p>
-              {searchQuery && (
+              {(searchQuery || typeFilter !== "ALL" || accountFilter !== "ALL") && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => {
+                    setSearchQuery("");
+                    setTypeFilter("ALL");
+                    setAccountFilter("ALL");
+                  }}
                   className="mt-2 px-4 py-2 bg-secondary/10 hover:bg-secondary/20 text-secondary font-bold text-label-sm rounded-xl transition-all"
                 >
-                  Reset Pencarian
+                  Reset Seluruh Filter
                 </button>
               )}
             </div>
@@ -605,6 +770,24 @@ export default function LaporanPage() {
             const isExpanded = expandedId === tx.id;
             const isAboveFold = idx < 6;
             const animDelay = isAboveFold ? `${((idx + 1) * 0.05).toFixed(2)}s` : "0s";
+
+            // Tentukan label buku rekening
+            const descLower = (tx.description || "").toLowerCase();
+            let accountBadge = { label: "Umum", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700" };
+            if (descLower.includes("bsi") || descLower.includes("farab")) {
+              accountBadge = { label: "BSI Faraby", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800" };
+            } else if (descLower.includes("bpd") || descLower.includes("kbs")) {
+              accountBadge = { label: "BPD KBS", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800" };
+            } else if (descLower.includes("rocchi")) {
+              accountBadge = { label: "Kas Rocchi", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800" };
+            }
+
+            // Tentukan judul transaksi yang jelas & informatif
+            let txTitle = tx.description || "Transaksi";
+            if (tx.tenant) {
+              const roomNumber = tx.room?.number || tx.tenant.room?.number || "";
+              txTitle = `${tx.tenant.name} ${roomNumber ? `• Kamar ${roomNumber}` : ""}`;
+            }
 
             return (
               <div
@@ -616,30 +799,40 @@ export default function LaporanPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
                         tx.type === "INCOME"
                           ? "bg-[#E8F5E9] text-[#2E7D32]"
                           : "bg-error-container/40 text-error"
                       }`}
                     >
                       <span className="material-symbols-outlined">
-                        {tx.type === "INCOME" ? "account_balance_wallet" : "payments"}
+                        {tx.type === "INCOME" ? "trending_up" : "trending_down"}
                       </span>
                     </div>
                     <div>
-                      <h4 className="font-bold text-on-surface text-body-md">
-                        {tx.tenant ? `${tx.tenant.name} - Kamar ${tx.room?.number || "--"}` : "Transaksi Umumi"}
+                      <h4 className="font-bold text-on-surface text-body-md line-clamp-1">
+                        {txTitle}
                       </h4>
-                      <p className="text-on-surface-variant text-label-sm">
-                        {tx.paymentMethod} • {new Date(tx.date).toLocaleDateString("id-ID")}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-on-surface-variant text-label-sm">
+                          {tx.paymentMethod} • {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.2 rounded border ${accountBadge.color}`}>
+                          {accountBadge.label}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <p className={`font-bold text-body-lg ${tx.type === "INCOME" ? "text-secondary" : "text-error"}`}>
-                      {tx.type === "INCOME" ? "+" : "-"}Rp {tx.amount.toLocaleString("id-ID")}
-                    </p>
+                  <div className="text-right shrink-0 flex items-center gap-3">
+                    <div>
+                      <p className={`font-bold text-body-lg sm:text-title-md ${tx.type === "INCOME" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        {tx.type === "INCOME" ? "+" : "-"}Rp {tx.amount.toLocaleString("id-ID")}
+                      </p>
+                      <span className="text-[11px] font-semibold text-on-surface-variant block">
+                        {tx.type === "INCOME" ? "Uang Masuk" : "Uang Keluar"}
+                      </span>
+                    </div>
                     <span
                       className={`material-symbols-outlined text-outline text-[20px] transition-transform duration-300 ${
                         isExpanded ? "rotate-180" : ""

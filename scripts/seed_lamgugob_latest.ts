@@ -81,7 +81,7 @@ const TENANTS_DATA = [
 
 // Data Pemasukan dan Pengeluaran (Halaman 2, 3, dan 4)
 const TRANSACTIONS_DATA = [
-  // Halaman 2: BSI Faraby & Operasional
+  // Halaman 2: BSI Faraby & Operasional (Faraby / Dede)
   { date: "2026-09-10", type: "INCOME", amount: 1500000, room: "46", desc: "Sewa Kamar 46 untuk 1 Bulan", method: "TRANSFER", note: "BSI Faraby" },
   { date: "2026-09-10", type: "INCOME", amount: 1500000, room: "21", desc: "Sewa Kamar 21 untuk 1 Bulan", method: "TRANSFER", note: "BSI Faraby" },
   { date: "2026-09-10", type: "INCOME", amount: 1500000, room: "48", desc: "Sewa Kamar 48 untuk 1 Bulan", method: "TRANSFER", note: "BSI Faraby" },
@@ -101,34 +101,34 @@ const TRANSACTIONS_DATA = [
   { date: "2026-09-14", type: "INCOME", amount: 1500000, room: "42", desc: "Sewa Kamar 42 untuk 1 Bulan", method: "TRANSFER", note: "BSI Faraby" },
   { date: "2026-09-14", type: "INCOME", amount: 8000000, room: "05", desc: "Sewa Kamar 5 untuk 6 Bulan", method: "TRANSFER", note: "BSI Faraby" },
 
-  { date: "2026-09-15", type: "INCOME", amount: 1500000, room: "44", desc: "Sewa Kamar 44 untuk 1 Bulan", method: "TRANSFER", note: "" },
+  { date: "2026-09-15", type: "INCOME", amount: 1500000, room: "44", desc: "Sewa Kamar 44 untuk 1 Bulan", method: "TRANSFER", note: "BSI Faraby" },
   { date: "2026-09-17", type: "INCOME", amount: 1500000, room: "11", desc: "Sewa Kamar 11 untuk 1 Bulan", method: "TRANSFER", note: "BSI Faraby" },
-  { date: "2026-09-17", type: "EXPENSE", amount: 7500000, room: null, desc: "Transfer ke Rocchi", method: "TRANSFER", note: "Faraby (Dede) ke Rocchi" },
+  { date: "2026-09-17", type: "EXPENSE", amount: 7500000, room: null, desc: "Transfer ke Rocchi", method: "TRANSFER", note: "BSI Faraby" },
 
   // Halaman 3: BPD KBS & Operasional
   { date: "2026-09-16", type: "INCOME", amount: 800000, room: "43", desc: "Sisa Pembayaran Sewa Kamar 43 untuk 1 Bulan", method: "TRANSFER", note: "BPD KBS" },
   { date: "2026-09-19", type: "INCOME", amount: 1500000, room: "23", desc: "Sewa Kamar 23 untuk 1 Bulan", method: "TRANSFER", note: "BPD KBS" },
-  { date: "2026-09-20", type: "INCOME", amount: 16200000, room: "16", desc: "Pembayaran 12 Kamar Pelayaran untuk 1 Bulan (Kamar 16, 17, 19, 20, 33, 38, 39, 50, 52, 54, 56, 57)", method: "TRANSFER", note: "BPD KBS - Rombongan Pelayaran" },
+  { date: "2026-09-20", type: "INCOME", amount: 16200000, room: "16", desc: "Pembayaran 12 Kamar Pelayaran untuk 1 Bulan (Kamar 16, 17, 19, 20, 33, 38, 39, 50, 52, 54, 56, 57)", method: "TRANSFER", note: "BPD KBS" },
   { date: "2026-09-21", type: "EXPENSE", amount: 560000, room: null, desc: "Bayar Tagihan WiFi", method: "TRANSFER", note: "BPD KBS" },
-  { date: "2026-09-22", type: "INCOME", amount: 1350000, room: "40", desc: "Sewa Kamar 40 untuk 1 Bulan", method: "TRANSFER", note: "BPD KBS - Pelayaran" },
-  { date: "2026-09-22", type: "EXPENSE", amount: 320000, room: null, desc: "Bon Sapu, Pel, dan Plastik Sampah", method: "CASH", note: "" },
-  { date: "2026-09-22", type: "EXPENSE", amount: 600000, room: null, desc: "Sedot WC", method: "CASH", note: "" },
-  { date: "2026-09-22", type: "EXPENSE", amount: 6500, room: null, desc: "Biaya Administrasi Bank", method: "TRANSFER", note: "" },
-  { date: "2026-09-24", type: "EXPENSE", amount: 200000, room: "23", desc: "Servis AC Kamar 23 dan 33", method: "CASH", note: "" },
-  { date: "2026-09-24", type: "EXPENSE", amount: 6500, room: null, desc: "Biaya Administrasi Bank", method: "TRANSFER", note: "" },
-  { date: "2026-09-24", type: "INCOME", amount: 1500000, room: "07", desc: "Sewa Kamar 07 untuk 1 Bulan", method: "TRANSFER", note: "" },
-  { date: "2026-09-28", type: "EXPENSE", amount: 200000, room: null, desc: "Pembelian Solar 20 Liter", method: "CASH", note: "" },
+  { date: "2026-09-22", type: "INCOME", amount: 1350000, room: "40", desc: "Sewa Kamar 40 untuk 1 Bulan (Pelayaran)", method: "TRANSFER", note: "BPD KBS" },
+  { date: "2026-09-22", type: "EXPENSE", amount: 320000, room: null, desc: "Bon Sapu, Pel, dan Plastik Sampah", method: "CASH", note: "BPD KBS" },
+  { date: "2026-09-22", type: "EXPENSE", amount: 600000, room: null, desc: "Sedot WC", method: "CASH", note: "BPD KBS" },
+  { date: "2026-09-22", type: "EXPENSE", amount: 6500, room: null, desc: "Biaya Administrasi Bank", method: "TRANSFER", note: "BPD KBS" },
+  { date: "2026-09-24", type: "EXPENSE", amount: 200000, room: "23", desc: "Servis AC Kamar 23 dan 33", method: "CASH", note: "BPD KBS" },
+  { date: "2026-09-24", type: "EXPENSE", amount: 6500, room: null, desc: "Biaya Administrasi Bank", method: "TRANSFER", note: "BPD KBS" },
+  { date: "2026-09-24", type: "INCOME", amount: 1500000, room: "07", desc: "Sewa Kamar 07 untuk 1 Bulan", method: "TRANSFER", note: "BPD KBS" },
+  { date: "2026-09-28", type: "EXPENSE", amount: 200000, room: null, desc: "Pembelian Solar 20 Liter", method: "CASH", note: "BPD KBS" },
 
-  // Halaman 4: Transaksi Operasional & Penyesuaian
-  { date: "2026-09-18", type: "INCOME", amount: 7500000, room: null, desc: "Penerimaan Transfer dari Dede (Faraby) ke Rocchi", method: "TRANSFER", note: "Dede (Faraby) ke Rocchi" },
-  { date: "2026-09-18", type: "EXPENSE", amount: 350000, room: null, desc: "Bayar Iuran Sampah", method: "CASH", note: "" },
-  { date: "2026-09-21", type: "EXPENSE", amount: 500000, room: null, desc: "Isi Token Listrik", method: "CASH", note: "" },
-  { date: "2026-09-21", type: "EXPENSE", amount: 400000, room: null, desc: "Pinjaman Rian", method: "CASH", note: "" },
-  { date: "2026-09-23", type: "EXPENSE", amount: 600000, room: null, desc: "Beli Mikro Bakteri", method: "CASH", note: "" },
-  { date: "2026-09-24", type: "EXPENSE", amount: 1480000, room: null, desc: "Bayar Laundry", method: "CASH", note: "" },
-  { date: "2026-09-26", type: "EXPENSE", amount: 100000, room: null, desc: "Pinjaman Rian", method: "CASH", note: "" },
-  { date: "2026-09-26", type: "EXPENSE", amount: 100000, room: "03", desc: "Servis AC Kamar 03", method: "CASH", note: "" },
-  { date: "2026-09-27", type: "EXPENSE", amount: 1003500, room: null, desc: "Pembelian Token Listrik", method: "CASH", note: "" }
+  // Halaman 4: Kas Operasional Rocchi
+  { date: "2026-09-18", type: "INCOME", amount: 7500000, room: null, desc: "Penerimaan Transfer dari Dede (Faraby) ke Rocchi", method: "TRANSFER", note: "Kas Rocchi" },
+  { date: "2026-09-18", type: "EXPENSE", amount: 350000, room: null, desc: "Bayar Iuran Sampah", method: "CASH", note: "Kas Rocchi" },
+  { date: "2026-09-21", type: "EXPENSE", amount: 500000, room: null, desc: "Isi Token Listrik", method: "CASH", note: "Kas Rocchi" },
+  { date: "2026-09-21", type: "EXPENSE", amount: 400000, room: null, desc: "Pinjaman Rian", method: "CASH", note: "Kas Rocchi" },
+  { date: "2026-09-23", type: "EXPENSE", amount: 600000, room: null, desc: "Beli Mikro Bakteri", method: "CASH", note: "Kas Rocchi" },
+  { date: "2026-09-24", type: "EXPENSE", amount: 1480000, room: null, desc: "Bayar Laundry", method: "CASH", note: "Kas Rocchi" },
+  { date: "2026-09-26", type: "EXPENSE", amount: 100000, room: null, desc: "Pinjaman Rian", method: "CASH", note: "Kas Rocchi" },
+  { date: "2026-09-26", type: "EXPENSE", amount: 100000, room: "03", desc: "Servis AC Kamar 03", method: "CASH", note: "Kas Rocchi" },
+  { date: "2026-09-27", type: "EXPENSE", amount: 1003500, room: null, desc: "Pembelian Token Listrik", method: "CASH", note: "Kas Rocchi" }
 ];
 
 async function main() {
