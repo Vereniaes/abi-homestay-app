@@ -874,11 +874,16 @@ export async function addTransaction(formData: FormData) {
     const tenantId = (formData.get("tenantId") as string) || "";
     const type = (formData.get("type") as any) || "INCOME";
     const rawRentType = formData.get("rentType") as string;
+    const account = (formData.get("account") as string) || "BSI Faraby";
+    const paymentMethodRaw = (formData.get("paymentMethod") as string) || "";
+    const paymentMethod = (paymentMethodRaw || (account === "Kas Rocchi" ? "CASH" : "TRANSFER")) as any;
+
     let rentType = null;
     let description = null;
 
     if (type === "EXPENSE") {
-      description = rawRentType;
+      const expDesc = (rawRentType || "Pengeluaran Operasional").trim();
+      description = expDesc.includes(account) ? expDesc : `${expDesc} (${account})`;
     } else {
       rentType = (rawRentType || "MONTHLY") as any;
     }
@@ -928,9 +933,16 @@ export async function addTransaction(formData: FormData) {
 
     let roomId = null;
     if (tenantId) {
-      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        include: { room: true },
+      });
       if (tenant) {
         roomId = tenant.roomId;
+        if (type === "INCOME") {
+          const roomNum = tenant.room?.number || "";
+          description = `Sewa Kamar ${roomNum} - ${tenant.name} (${account})`;
+        }
         // Sinkronisasi opsional tanggal jatuh tempo ke siklus berikutnya saat pemasukan sewa dicatat
         const syncDateDue = formData.get("syncDateDue") === "true";
         if (syncDateDue && tenant.dateDue) {
@@ -943,16 +955,24 @@ export async function addTransaction(formData: FormData) {
       }
     }
 
+    if (!description) {
+      description = type === "INCOME" ? `Penerimaan Sewa (${account})` : `Pengeluaran Operasional (${account})`;
+    }
+
+    const dateCode = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+    const prefix = type === "INCOME" ? "TRX-IN" : "TRX-OUT";
+    const refId = `${prefix}-${dateCode}-${Math.floor(100 + Math.random() * 900)}`;
+
     const transaction = await prisma.transaction.create({
       data: {
-        refId: `TRX-${Math.floor(100000 + Math.random() * 900000)}`,
+        refId,
         type,
         tenantId: tenantId || null,
         roomId: roomId,
         rentType,
         description,
         amount,
-        paymentMethod: "TRANSFER",
+        paymentMethod,
         proofUrl,
         date: new Date(),
       },
@@ -960,6 +980,7 @@ export async function addTransaction(formData: FormData) {
 
     revalidatePath("/laporan");
     revalidatePath("/penghuni");
+    revalidatePath("/");
     return transaction;
   } catch (error) {
     console.error("Error in addTransaction:", error);
@@ -998,7 +1019,12 @@ export async function updateTransaction(formData: FormData) {
     const amount = amountCleaned ? parseFloat(amountCleaned) : existingTx.amount;
 
     const rawRentType = formData.get("rentType") as string;
-    const description = (formData.get("description") as string) || existingTx.description;
+    let description = (formData.get("description") as string) || existingTx.description;
+    const account = formData.get("account") as string;
+    if (account && description) {
+      const cleanDesc = description.replace(/\s*\((BSI Faraby|BPD KBS|Kas Rocchi|Kas Operasional Rocchi|Umum)[^)]*\)/gi, "").trim();
+      description = `${cleanDesc} (${account})`;
+    }
     const paymentMethod = (formData.get("paymentMethod") as string) || existingTx.paymentMethod;
     const dateRaw = formData.get("date") as string;
     const removeProof = formData.get("removeProof") === "true";

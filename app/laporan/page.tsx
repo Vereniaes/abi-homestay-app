@@ -62,6 +62,8 @@ export default function LaporanPage() {
 
   // Form states
   const [txType, setTxType] = useState<"INCOME" | "EXPENSE">("INCOME");
+  const [selectedAccount, setSelectedAccount] = useState<"BSI Faraby" | "BPD KBS" | "Kas Rocchi">("BSI Faraby");
+  const [paymentMethod, setPaymentMethod] = useState<"TRANSFER" | "CASH" | "QRIS">("TRANSFER");
   const [selectedTenantId, setSelectedTenantId] = useState("");
   const [paymentType, setPaymentType] = useState("MONTHLY");
   const [expenseDescription, setExpenseDescription] = useState("");
@@ -75,6 +77,7 @@ export default function LaporanPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTxId, setEditTxId] = useState("");
   const [editTxType, setEditTxType] = useState<"INCOME" | "EXPENSE">("INCOME");
+  const [editAccount, setEditAccount] = useState<"BSI Faraby" | "BPD KBS" | "Kas Rocchi">("BSI Faraby");
   const [editTenantName, setEditTenantName] = useState("");
   const [editRoomNumber, setEditRoomNumber] = useState("");
   const [editAmount, setEditAmount] = useState("");
@@ -282,6 +285,8 @@ export default function LaporanPage() {
     formData.append("tenantId", selectedTenantId);
     formData.append("rentType", txType === "EXPENSE" ? expenseDescription : paymentType);
     formData.append("amount", amount);
+    formData.append("account", selectedAccount);
+    formData.append("paymentMethod", paymentMethod);
     formData.append("syncDateDue", syncDateDue ? "true" : "false");
     
     if (selectedFile) {
@@ -296,6 +301,8 @@ export default function LaporanPage() {
       setExpenseDescription("");
       setSelectedFile(null);
       setSelectedTenantId("");
+      setSelectedAccount("BSI Faraby");
+      setPaymentMethod("TRANSFER");
       setSyncDateDue(true);
       // Invalidasi cache agar data baru langsung terlihat
       clearClientCache("transactions");
@@ -318,7 +325,21 @@ export default function LaporanPage() {
     setEditRoomNumber(tx.room?.number || "--");
     setEditAmount(String(tx.amount));
     setEditRentType(tx.rentType || "MONTHLY");
-    setEditDescription(tx.description || "");
+
+    const desc = tx.description || "";
+    const descLower = desc.toLowerCase();
+    let detectedAcc: "BSI Faraby" | "BPD KBS" | "Kas Rocchi" = "BSI Faraby";
+    if (descLower.includes("bpd") || descLower.includes("kbs")) {
+      detectedAcc = "BPD KBS";
+    } else if (descLower.includes("rocchi")) {
+      detectedAcc = "Kas Rocchi";
+    }
+    setEditAccount(detectedAcc);
+
+    // Bersihkan tag rekening untuk teks input agar rapi
+    const cleanDesc = desc.replace(/\s*\((BSI Faraby|BPD KBS|Kas Rocchi|Kas Operasional Rocchi|Umum)[^)]*\)/gi, "").trim();
+    setEditDescription(cleanDesc);
+
     setEditPaymentMethod(tx.paymentMethod || "TRANSFER");
     setEditDate(new Date(tx.date).toISOString().split("T")[0]);
     setEditProofUrl(tx.proofUrl);
@@ -342,6 +363,7 @@ export default function LaporanPage() {
     formData.append("amount", editAmount);
     formData.append("rentType", editRentType);
     formData.append("description", editDescription);
+    formData.append("account", editAccount);
     formData.append("paymentMethod", editPaymentMethod);
     formData.append("date", editDate);
     formData.append("removeProof", String(editRemoveProof));
@@ -656,10 +678,10 @@ export default function LaporanPage() {
             <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-0.5">
               <span className="text-xs font-semibold text-on-surface-variant mr-1 shrink-0">Buku Kas:</span>
               {[
-                { key: "ALL", label: "Semua Rekening" },
-                { key: "BSI", label: "BSI Faraby" },
-                { key: "BPD", label: "BPD KBS" },
-                { key: "ROCCHI", label: "Kas Rocchi" },
+                { key: "ALL", label: `Semua (${transactions.length})` },
+                { key: "BSI", label: `BSI Faraby (${transactions.filter((t) => (t.description || "").toLowerCase().includes("bsi") || (t.description || "").toLowerCase().includes("farab")).length})` },
+                { key: "BPD", label: `BPD KBS (${transactions.filter((t) => (t.description || "").toLowerCase().includes("bpd") || (t.description || "").toLowerCase().includes("kbs")).length})` },
+                { key: "ROCCHI", label: `Kas Rocchi (${transactions.filter((t) => (t.description || "").toLowerCase().includes("rocchi")).length})` },
               ].map((item) => {
                 const isActive = accountFilter === item.key;
                 return (
@@ -1060,6 +1082,109 @@ export default function LaporanPage() {
                 </div>
               </div>
 
+              {/* Pilihan 3 Rekening */}
+              <div>
+                <label className="block text-label-md font-semibold text-on-surface-variant mb-2 flex items-center justify-between">
+                  <span>Pilih Rekening / Sumber Dana</span>
+                  <span className="text-[11px] font-bold text-secondary uppercase tracking-wider">3 Pilihan Rekening</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {[
+                    {
+                      key: "BSI Faraby",
+                      name: "BSI Faraby",
+                      owner: "Faraby / Dede",
+                      tag: "Buku 1",
+                      icon: "account_balance",
+                      color: "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/40",
+                    },
+                    {
+                      key: "BPD KBS",
+                      name: "BPD KBS",
+                      owner: "Abdul Rozak / KBS",
+                      tag: "Buku 2",
+                      icon: "account_balance",
+                      color: "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-2 ring-purple-500/40",
+                    },
+                    {
+                      key: "Kas Rocchi",
+                      name: "Kas Rocchi",
+                      owner: "Kas Operasional",
+                      tag: "Buku 3",
+                      icon: "payments",
+                      color: "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/40",
+                    },
+                  ].map((acc) => {
+                    const isSelected = selectedAccount === acc.key;
+                    return (
+                      <button
+                        key={acc.key}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAccount(acc.key as any);
+                          if (acc.key === "Kas Rocchi") {
+                            setPaymentMethod("CASH");
+                          } else if (paymentMethod === "CASH") {
+                            setPaymentMethod("TRANSFER");
+                          }
+                        }}
+                        className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                          isSelected
+                            ? `${acc.color} shadow-sm`
+                            : "border-outline-variant/40 bg-surface hover:bg-surface-container-low text-on-surface"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="material-symbols-outlined text-[18px] shrink-0">
+                              {acc.icon}
+                            </span>
+                            <span className="text-body-sm font-bold truncate">{acc.name}</span>
+                          </div>
+                          {isSelected && (
+                            <span className="material-symbols-outlined text-[16px] text-primary shrink-0">
+                              check_circle
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-medium mt-1">
+                          <span className="truncate">{acc.owner}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[10px] font-bold shrink-0">
+                            {acc.tag}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Metode Pembayaran */}
+              <div>
+                <label className="block text-label-md text-on-surface-variant mb-2">Metode Pembayaran</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: "TRANSFER", label: "Transfer Bank", icon: "account_balance" },
+                    { key: "CASH", label: "Tunai (Cash)", icon: "payments" },
+                    { key: "QRIS", label: "QRIS", icon: "qr_code_2" },
+                  ].map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setPaymentMethod(m.key as any)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                        paymentMethod === m.key
+                          ? "border-secondary bg-secondary/10 text-secondary ring-1 ring-secondary"
+                          : "border-outline-variant/40 bg-surface text-on-surface-variant hover:bg-surface-container-low"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">{m.icon}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-label-md text-on-surface-variant mb-2">Pilih Penghuni</label>
                 <select
@@ -1067,7 +1192,7 @@ export default function LaporanPage() {
                   onChange={(e) => setSelectedTenantId(e.target.value)}
                   className="w-full rounded-xl border border-outline-variant bg-surface px-4 py-3 text-body-md text-on-surface focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
                 >
-                  <option value="">Pilih penghuni kamar...</option>
+                  <option value="">Pilih penghuni kamar (opsional jika umum)...</option>
                   {tenants.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} - Kamar {t.room?.number || "--"}
@@ -1342,6 +1467,43 @@ export default function LaporanPage() {
                   />
                 </div>
 
+                {/* Pilihan Rekening pada Edit Modal */}
+                <div>
+                  <label className="block text-label-sm font-semibold text-on-surface-variant mb-1.5 flex items-center justify-between">
+                    <span>Rekening / Buku Kas</span>
+                    <span className="text-[11px] font-bold text-secondary">3 Pilihan Rekening</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { key: "BSI Faraby", label: "BSI Faraby", icon: "account_balance", color: "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/40" },
+                      { key: "BPD KBS", label: "BPD KBS", icon: "account_balance", color: "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-2 ring-purple-500/40" },
+                      { key: "Kas Rocchi", label: "Kas Rocchi", icon: "payments", color: "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/40" },
+                    ].map((acc) => {
+                      const isSelected = editAccount === acc.key;
+                      return (
+                        <button
+                          key={acc.key}
+                          type="button"
+                          onClick={() => {
+                            setEditAccount(acc.key as any);
+                            if (acc.key === "Kas Rocchi" && editPaymentMethod === "TRANSFER") {
+                              setEditPaymentMethod("CASH");
+                            }
+                          }}
+                          className={`py-2 px-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                            isSelected
+                              ? `${acc.color} shadow-sm`
+                              : "border-outline-variant/40 bg-surface text-on-surface-variant hover:bg-surface-container"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">{acc.icon}</span>
+                          <span className="truncate">{acc.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-label-sm font-semibold text-on-surface-variant mb-1.5">
@@ -1366,6 +1528,7 @@ export default function LaporanPage() {
                     >
                       <option value="TRANSFER">Transfer Bank</option>
                       <option value="CASH">Tunai (Cash)</option>
+                      <option value="QRIS">QRIS</option>
                     </select>
                   </div>
                 </div>
