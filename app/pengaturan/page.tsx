@@ -18,6 +18,7 @@ interface Setting {
   id: string;
   autoWhatsappReminders: boolean;
   reminderRecipientEmail?: string;
+  reminderRecipientEmails?: string[];
 }
 
 interface UserSession {
@@ -67,7 +68,9 @@ export default function PengaturanPage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState<{ success: boolean; message: string } | null>(null);
-  const [summaryEmail, setSummaryEmail] = useState("titasaripratiwi8@gmail.com");
+  const [summaryEmails, setSummaryEmails] = useState<string[]>(["titasaripratiwi8@gmail.com"]);
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [emailInputError, setEmailInputError] = useState<string | null>(null);
   const [isSavingSetting, setIsSavingSetting] = useState(false);
   const [settingFeedback, setSettingFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -92,8 +95,17 @@ export default function PengaturanPage() {
     }
     if (data.setting) {
       setSetting(data.setting as any);
-      if ((data.setting as any).reminderRecipientEmail) {
-        setSummaryEmail((data.setting as any).reminderRecipientEmail);
+      const emails = (data.setting as any).reminderRecipientEmails;
+      if (Array.isArray(emails) && emails.length > 0) {
+        setSummaryEmails(emails);
+      } else if ((data.setting as any).reminderRecipientEmail) {
+        const parsed = (data.setting as any).reminderRecipientEmail
+          .split(/[,;\s]+/)
+          .map((e: string) => e.trim().toLowerCase())
+          .filter((e: string) => e.includes("@"));
+        if (parsed.length > 0) {
+          setSummaryEmails(parsed);
+        }
       }
     }
     const user = await getCurrentUser();
@@ -102,20 +114,72 @@ export default function PengaturanPage() {
     }
   };
 
-  const handleSaveSummaryEmail = async () => {
-    if (!summaryEmail || !summaryEmail.includes("@")) {
-      setSettingFeedback({ success: false, message: "Alamat email tidak valid." });
+  // helper --------------------------------------------------------------------------
+  // function untuk menambah email penerima ke daftar lokal
+  // input param : none
+  // output : void
+  // end of helper ------------------------------------------------------------------
+  const handleAddRecipientEmail = () => {
+    const emailToValidate = newEmailInput.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailToValidate || !emailRegex.test(emailToValidate)) {
+      setEmailInputError("Format email tidak valid (contoh: nama@domain.com).");
+      return;
+    }
+    if (summaryEmails.includes(emailToValidate)) {
+      setEmailInputError("Email sudah terdaftar dalam daftar penerima.");
+      return;
+    }
+    setSummaryEmails([...summaryEmails, emailToValidate]);
+    setNewEmailInput("");
+    setEmailInputError(null);
+    setSettingFeedback(null);
+  };
+
+  // helper --------------------------------------------------------------------------
+  // function untuk menghapus email penerima dari daftar lokal
+  // input param : emailToRemove (string)
+  // output : void
+  // end of helper ------------------------------------------------------------------
+  const handleRemoveRecipientEmail = (emailToRemove: string) => {
+    if (summaryEmails.length <= 1) {
+      setSettingFeedback({
+        success: false,
+        message: "Minimal harus ada 1 alamat email pengelola untuk menerima rekap.",
+      });
+      return;
+    }
+    setSummaryEmails(summaryEmails.filter((email) => email !== emailToRemove));
+    setSettingFeedback(null);
+  };
+
+  // helper --------------------------------------------------------------------------
+  // function untuk menyimpan daftar email penerima rekap ke database
+  // input param : none
+  // output : void
+  // end of helper ------------------------------------------------------------------
+  const handleSaveSummaryEmails = async () => {
+    if (summaryEmails.length === 0) {
+      setSettingFeedback({ success: false, message: "Minimal harus ada 1 alamat email penerima." });
       return;
     }
     setIsSavingSetting(true);
     setSettingFeedback(null);
     try {
-      const res = await updateSetting(setting?.id || "default", setting?.autoWhatsappReminders ?? true, summaryEmail);
+      const res = await updateSetting(
+        setting?.id || "default",
+        setting?.autoWhatsappReminders ?? true,
+        summaryEmails.join(", "),
+        summaryEmails
+      );
       if (res) {
         setSetting(res as any);
-        setSettingFeedback({ success: true, message: "Alamat email penerima rekap berhasil diperbarui." });
+        setSettingFeedback({
+          success: true,
+          message: `${summaryEmails.length} email penerima rekap berhasil diperbarui.`,
+        });
       } else {
-        setSettingFeedback({ success: false, message: "Gagal menyimpan email pengelola." });
+        setSettingFeedback({ success: false, message: "Gagal menyimpan daftar email pengelola." });
       }
     } catch (err: any) {
       setSettingFeedback({ success: false, message: err?.message || "Terjadi kesalahan." });
@@ -319,7 +383,7 @@ export default function PengaturanPage() {
                   Pengingat Email
                 </p>
                 <p className="font-label-sm text-label-sm text-on-surface-variant truncate max-w-[200px] md:max-w-none">
-                  Kirim rekap tagihan ke {summaryEmail}
+                  Kirim rekap tagihan ke {summaryEmails.length} pengelola ({summaryEmails.slice(0, 2).join(", ")}{summaryEmails.length > 2 ? ", dll" : ""})
                 </p>
               </div>
             </div>
@@ -671,33 +735,94 @@ export default function PengaturanPage() {
               <div className="space-y-4">
                 {/* Form Input Email Penerima Rekap */}
                 <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high space-y-3">
-                  <label className="block text-body-sm font-bold text-primary">
-                    Email Penerima Rekap Tagihan (Summary)
-                  </label>
-                  <p className="text-xs text-on-surface-variant">
-                    Alamat email pengelola yang menerima laporan rekapitulasi harian jatuh tempo sewa:
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      required
-                      value={summaryEmail}
-                      onChange={(e) => setSummaryEmail(e.target.value)}
-                      placeholder="titasaripratiwi8@gmail.com"
-                      disabled={currentUser?.role === "VIEW"}
-                      className="flex-1 rounded-xl border border-outline-variant bg-surface px-4 py-2.5 text-body-sm font-medium text-on-surface focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
-                    />
-                    {currentUser?.role !== "VIEW" && (
+                  <div>
+                    <label className="block text-body-sm font-bold text-primary">
+                      Daftar Email Penerima Rekap ({summaryEmails.length})
+                    </label>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      Laporan rekapitulasi harian tagihan akan dikirimkan ke seluruh email di bawah:
+                    </p>
+                  </div>
+
+                  {/* List of current emails */}
+                  <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                    {summaryEmails.map((email, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-surface-container-lowest border border-surface-variant/60 shadow-xs group"
+                      >
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                          <span className="material-symbols-outlined text-brand-teal text-[18px]">mail</span>
+                          <span className="text-body-sm font-medium text-on-surface truncate">{email}</span>
+                        </div>
+                        {currentUser?.role !== "VIEW" && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRecipientEmail(email)}
+                            disabled={summaryEmails.length <= 1}
+                            title={summaryEmails.length <= 1 ? "Minimal 1 email diperlukan" : "Hapus email ini"}
+                            className="p-1 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-outline cursor-pointer disabled:cursor-not-allowed"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">close</span>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Form Tambah Email Baru */}
+                  {currentUser?.role !== "VIEW" && (
+                    <div className="space-y-1.5 pt-2 border-t border-surface-variant/40">
+                      <label className="block text-xs font-semibold text-on-surface-variant">
+                        Tambah Alamat Email Baru
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          value={newEmailInput}
+                          onChange={(e) => {
+                            setNewEmailInput(e.target.value);
+                            setEmailInputError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddRecipientEmail();
+                            }
+                          }}
+                          placeholder="pengelola.baru@gmail.com"
+                          className="flex-1 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-body-sm font-medium text-on-surface focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddRecipientEmail}
+                          className="px-4 py-2.5 bg-brand-teal text-white rounded-xl text-xs font-bold hover:bg-brand-deep-blue transition-all active:scale-95 shrink-0 flex items-center gap-1 shadow-sm"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">add</span>
+                          Tambah
+                        </button>
+                      </div>
+                      {emailInputError && (
+                        <p className="text-xs text-error font-medium">{emailInputError}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tombol Simpan Daftar */}
+                  {currentUser?.role !== "VIEW" && (
+                    <div className="pt-2">
                       <button
                         type="button"
                         disabled={isSavingSetting}
-                        onClick={handleSaveSummaryEmail}
-                        className="px-4 py-2.5 bg-secondary text-on-secondary rounded-xl text-xs font-bold hover:bg-secondary/90 transition-all active:scale-95 disabled:opacity-50 shrink-0"
+                        onClick={handleSaveSummaryEmails}
+                        className="w-full py-2.5 bg-secondary text-on-secondary rounded-xl text-xs font-bold hover:bg-secondary/90 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
                       >
-                        {isSavingSetting ? "Menyimpan..." : "Simpan"}
+                        <span className="material-symbols-outlined text-[16px]">save</span>
+                        {isSavingSetting ? "Menyimpan..." : "Simpan Perubahan Penerima"}
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
                   {settingFeedback && (
                     <p className={`text-xs font-medium ${settingFeedback.success ? "text-emerald-600 dark:text-emerald-400" : "text-error"}`}>
                       {settingFeedback.message}

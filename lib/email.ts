@@ -690,17 +690,41 @@ export async function processTenantDueReminders(daysAhead: number): Promise<Batc
 
 // helper --------------------------------------------------------------------------
 // function untuk memproses alur terpadu pengingat sewa (H-5, H-3, H-1, Hari H, H+1, H+3, H+7, dan rekap pengelola)
-// input param : customRecipientEmail? (string)
+// input param : customRecipientEmails? (string | string[])
 // output : object { success: boolean, message: string, count: number, h5, h3, h1, h0, hp1, hp3, hp7 }
 // end of helper ------------------------------------------------------------------
-export async function sendDueReminderReport(customRecipientEmail?: string) {
+export async function sendDueReminderReport(customRecipientEmails?: string | string[]) {
   try {
-    let recipientEmail = customRecipientEmail;
-    if (!recipientEmail) {
+    let recipientList: string[] = [];
+    if (customRecipientEmails) {
+      if (Array.isArray(customRecipientEmails)) {
+        recipientList = customRecipientEmails;
+      } else {
+        recipientList = customRecipientEmails.split(/[,;\s]+/);
+      }
+    } else {
       const setting = await prisma.setting.findFirst();
-      recipientEmail = (setting as any)?.reminderRecipientEmail || process.env.REMINDER_RECIPIENT_EMAIL || "titasaripratiwi8@gmail.com";
+      if (setting && Array.isArray((setting as any).reminderRecipientEmails) && (setting as any).reminderRecipientEmails.length > 0) {
+        recipientList = (setting as any).reminderRecipientEmails;
+      } else if (setting && (setting as any).reminderRecipientEmail) {
+        recipientList = (setting as any).reminderRecipientEmail.split(/[,;\s]+/);
+      } else {
+        const envEmails = process.env.REMINDER_RECIPIENT_EMAIL || "titasaripratiwi8@gmail.com";
+        recipientList = envEmails.split(/[,;\s]+/);
+      }
     }
-    const finalRecipientEmail: string = recipientEmail || "titasaripratiwi8@gmail.com";
+
+    const finalRecipients = Array.from(
+      new Set(
+        recipientList
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.includes("@"))
+      )
+    );
+
+    if (finalRecipients.length === 0) {
+      finalRecipients.push("titasaripratiwi8@gmail.com");
+    }
 
     // 1. Eksekusi pengingat personal H-5, H-3, H-1, Hari H (D-Day), dan keterlambatan H+1, H+3, H+7
     const [h5Result, h3Result, h1Result, h0Result, hp1Result, hp3Result, hp7Result] = await Promise.all([
@@ -773,10 +797,15 @@ export async function sendDueReminderReport(customRecipientEmail?: string) {
     ]);
 
     const sendResult = await sendBrevoEmail({
-      to: [{ email: finalRecipientEmail, name: "Pengelola ABI Homestay" }],
+      to: finalRecipients.map((email) => ({
+        email,
+        name: "Pengelola ABI Homestay",
+      })),
       subject,
       htmlContent,
     });
+
+    const recipientsDisplay = finalRecipients.join(", ");
 
     if (!sendResult.success) {
       return {
@@ -795,7 +824,7 @@ export async function sendDueReminderReport(customRecipientEmail?: string) {
 
     return {
       success: true,
-      message: `Email rekap berhasil dikirim ke ${finalRecipientEmail}. Notifikasi personal terkirim: H-5 (${h5Result.sentCount}), H-3 (${h3Result.sentCount}), H-1 (${h1Result.sentCount}), Hari H (${h0Result.sentCount}), H+1 (${hp1Result.sentCount}), H+3 (${hp3Result.sentCount}), H+7 (${hp7Result.sentCount}).`,
+      message: `Email rekap berhasil dikirim ke ${recipientsDisplay}. Notifikasi personal terkirim: H-5 (${h5Result.sentCount}), H-3 (${h3Result.sentCount}), H-1 (${h1Result.sentCount}), Hari H (${h0Result.sentCount}), H+1 (${hp1Result.sentCount}), H+3 (${hp3Result.sentCount}), H+7 (${hp7Result.sentCount}).`,
       count: dueTenants.length,
       h5: h5Result,
       h3: h3Result,

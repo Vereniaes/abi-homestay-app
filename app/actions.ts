@@ -1133,15 +1133,21 @@ export async function getPricingAndSettings() {
         data: {
           autoWhatsappReminders: true,
           reminderRecipientEmail: "titasaripratiwi8@gmail.com",
+          reminderRecipientEmails: ["titasaripratiwi8@gmail.com"],
         } as any,
       });
-    } else if (!(setting as any).reminderRecipientEmail) {
-      setting = await prisma.setting.update({
-        where: { id: setting.id },
-        data: {
-          reminderRecipientEmail: "titasaripratiwi8@gmail.com",
-        } as any,
-      });
+    } else {
+      const emails = (setting as any).reminderRecipientEmails;
+      if (!emails || emails.length === 0) {
+        const fallbackEmail = (setting as any).reminderRecipientEmail || "titasaripratiwi8@gmail.com";
+        const emailArr = fallbackEmail.split(/[,;\s]+/).map((e: string) => e.trim()).filter(Boolean);
+        setting = await prisma.setting.update({
+          where: { id: setting.id },
+          data: {
+            reminderRecipientEmails: emailArr.length > 0 ? emailArr : ["titasaripratiwi8@gmail.com"],
+          } as any,
+        });
+      }
     }
 
     return { pricing, setting };
@@ -1160,6 +1166,7 @@ export async function getPricingAndSettings() {
         id: "default",
         autoWhatsappReminders: true,
         reminderRecipientEmail: "titasaripratiwi8@gmail.com",
+        reminderRecipientEmails: ["titasaripratiwi8@gmail.com"],
       },
     };
   }
@@ -1216,14 +1223,15 @@ export async function updatePricing(
 }
 
 // helper --------------------------------------------------------------------------
-// function untuk merubah setting Auto-WhatsApp Reminders dan email penerima rekap
-// input param : settingId (string), autoWhatsappReminders (boolean), reminderRecipientEmail? (string)
+// function untuk merubah setting Auto-WhatsApp Reminders dan daftar email penerima rekap
+// input param : settingId (string), autoWhatsappReminders (boolean), reminderRecipientEmail? (string), reminderRecipientEmails? (string[])
 // output : object Setting
 // end of helper ------------------------------------------------------------------
 export async function updateSetting(
   settingId: string,
   autoWhatsappReminders: boolean,
-  reminderRecipientEmail?: string
+  reminderRecipientEmail?: string,
+  reminderRecipientEmails?: string[]
 ) {
   try {
     const user = await getCurrentUser();
@@ -1233,7 +1241,27 @@ export async function updateSetting(
     }
     let setting = await prisma.setting.findFirst();
     const updateData: any = { autoWhatsappReminders };
-    if (reminderRecipientEmail !== undefined) {
+
+    let cleanEmails: string[] | undefined;
+    if (reminderRecipientEmails && Array.isArray(reminderRecipientEmails)) {
+      cleanEmails = Array.from(new Set(
+        reminderRecipientEmails
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.includes("@"))
+      ));
+    } else if (reminderRecipientEmail !== undefined) {
+      cleanEmails = Array.from(new Set(
+        reminderRecipientEmail
+          .split(/[,;\s]+/)
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.includes("@"))
+      ));
+    }
+
+    if (cleanEmails && cleanEmails.length > 0) {
+      updateData.reminderRecipientEmails = cleanEmails;
+      updateData.reminderRecipientEmail = cleanEmails.join(", ");
+    } else if (reminderRecipientEmail !== undefined) {
       updateData.reminderRecipientEmail = reminderRecipientEmail.trim();
     }
 
@@ -1241,7 +1269,8 @@ export async function updateSetting(
       setting = await prisma.setting.create({
         data: {
           autoWhatsappReminders,
-          reminderRecipientEmail: reminderRecipientEmail?.trim() || "titasaripratiwi8@gmail.com",
+          reminderRecipientEmail: updateData.reminderRecipientEmail || "titasaripratiwi8@gmail.com",
+          reminderRecipientEmails: updateData.reminderRecipientEmails || ["titasaripratiwi8@gmail.com"],
         } as any,
       });
     } else {
