@@ -709,7 +709,7 @@ export async function sendDueReminderReport(customRecipientEmails?: string | str
       } else if (setting && (setting as any).reminderRecipientEmail) {
         recipientList = (setting as any).reminderRecipientEmail.split(/[,;\s]+/);
       } else {
-        const envEmails = process.env.REMINDER_RECIPIENT_EMAIL || "titasaripratiwi8@gmail.com";
+        const envEmails = process.env.REMINDER_RECIPIENT_EMAIL || "abedenstein12@gmail.com";
         recipientList = envEmails.split(/[,;\s]+/);
       }
     }
@@ -723,7 +723,7 @@ export async function sendDueReminderReport(customRecipientEmails?: string | str
     );
 
     if (finalRecipients.length === 0) {
-      finalRecipients.push("titasaripratiwi8@gmail.com");
+      finalRecipients.push("abedenstein12@gmail.com");
     }
 
     // 1. Eksekusi pengingat personal H-5, H-3, H-1, Hari H (D-Day), dan keterlambatan H+1, H+3, H+7

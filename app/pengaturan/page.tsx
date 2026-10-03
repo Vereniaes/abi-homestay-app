@@ -68,7 +68,7 @@ export default function PengaturanPage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState<{ success: boolean; message: string } | null>(null);
-  const [summaryEmails, setSummaryEmails] = useState<string[]>(["titasaripratiwi8@gmail.com"]);
+  const [summaryEmails, setSummaryEmails] = useState<string[]>(["abedenstein12@gmail.com"]);
   const [newEmailInput, setNewEmailInput] = useState("");
   const [emailInputError, setEmailInputError] = useState<string | null>(null);
   const [isSavingSetting, setIsSavingSetting] = useState(false);

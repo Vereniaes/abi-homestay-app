@@ -1132,19 +1132,19 @@ export async function getPricingAndSettings() {
       setting = await prisma.setting.create({
         data: {
           autoWhatsappReminders: true,
-          reminderRecipientEmail: "titasaripratiwi8@gmail.com",
-          reminderRecipientEmails: ["titasaripratiwi8@gmail.com"],
+          reminderRecipientEmail: "abedenstein12@gmail.com",
+          reminderRecipientEmails: ["abedenstein12@gmail.com"],
         } as any,
       });
     } else {
       const emails = (setting as any).reminderRecipientEmails;
       if (!emails || emails.length === 0) {
-        const fallbackEmail = (setting as any).reminderRecipientEmail || "titasaripratiwi8@gmail.com";
+        const fallbackEmail = (setting as any).reminderRecipientEmail || "abedenstein12@gmail.com";
         const emailArr = fallbackEmail.split(/[,;\s]+/).map((e: string) => e.trim()).filter(Boolean);
         setting = await prisma.setting.update({
           where: { id: setting.id },
           data: {
-            reminderRecipientEmails: emailArr.length > 0 ? emailArr : ["titasaripratiwi8@gmail.com"],
+            reminderRecipientEmails: emailArr.length > 0 ? emailArr : ["abedenstein12@gmail.com"],
           } as any,
         });
       }
@@ -1165,8 +1165,8 @@ export async function getPricingAndSettings() {
       setting: {
         id: "default",
         autoWhatsappReminders: true,
-        reminderRecipientEmail: "titasaripratiwi8@gmail.com",
-        reminderRecipientEmails: ["titasaripratiwi8@gmail.com"],
+        reminderRecipientEmail: "abedenstein12@gmail.com",
+        reminderRecipientEmails: ["abedenstein12@gmail.com"],
       },
     };
   }
@@ -1269,8 +1269,8 @@ export async function updateSetting(
       setting = await prisma.setting.create({
         data: {
           autoWhatsappReminders,
-          reminderRecipientEmail: updateData.reminderRecipientEmail || "titasaripratiwi8@gmail.com",
-          reminderRecipientEmails: updateData.reminderRecipientEmails || ["titasaripratiwi8@gmail.com"],
+          reminderRecipientEmail: updateData.reminderRecipientEmail || "abedenstein12@gmail.com",
+          reminderRecipientEmails: updateData.reminderRecipientEmails || ["abedenstein12@gmail.com"],
         } as any,
       });
     } else {

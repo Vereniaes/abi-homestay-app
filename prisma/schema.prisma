@@ -97,7 +97,7 @@ model Pricing {
 model Setting {
   id                      String   @id @default(auto()) @map("_id") @db.ObjectId
   autoWhatsappReminders   Boolean  @default(true)
-  reminderRecipientEmail  String?  @default("titasaripratiwi8@gmail.com")
+  reminderRecipientEmail  String?  @default("abedenstein12@gmail.com")
   reminderRecipientEmails String[]
   updatedAt               DateTime @updatedAt
 }
