@@ -1,0 +1,16 @@
+{
+  "name": "Abi Homestay",
+  "short_name": "Abi Homestay",
+  "description": "Aplikasi Manajemen Kost Abi Homestay Terpadu",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0d9488",
+  "icons": [
+    {
+      "src": "/globe.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

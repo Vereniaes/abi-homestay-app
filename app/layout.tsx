@@ -13,6 +13,12 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Abi Homestay - Manajemen Kost Mudah",
   description: "Aplikasi Manajemen Kost Abi Homestay Terpadu",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Abi Homestay",
+  },
 };
 
 // helper --------------------------------------------------------------------------
@@ -28,6 +34,10 @@ export default function RootLayout({
   return (
     <html lang="id" className={plusJakartaSans.variable} suppressHydrationWarning>
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Abi Homestay" />
+        <link rel="apple-touch-icon" href="/globe.svg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
