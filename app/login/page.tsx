@@ -152,6 +152,20 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Download Android APK Option */}
+        <div className="mt-6 pt-5 border-t border-outline-variant/30 text-center">
+          <a
+            href="/Abi-Homestay.apk"
+            download="Abi-Homestay.apk"
+            className="inline-flex items-center justify-center gap-2 text-label-md font-semibold text-secondary hover:text-on-secondary-fixed-variant bg-secondary/10 hover:bg-secondary/15 px-4 py-2.5 rounded-xl transition-all shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[20px]">android</span>
+            <span>Download Aplikasi Android (.apk)</span>
+          </a>
+          <p className="text-[11px] text-outline mt-1.5">
+            Instal langsung di HP Android Anda (± 4 MB)
+          </p>
+        </div>
 
       </div>
     </main>

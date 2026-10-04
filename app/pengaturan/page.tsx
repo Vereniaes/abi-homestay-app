@@ -528,6 +528,31 @@ export default function PengaturanPage() {
               chevron_right
             </span>
           </button>
+
+          <div className="w-full h-[1px] bg-surface-container-low my-1 ml-14"></div>
+
+          <a 
+            href="/Abi-Homestay.apk"
+            download="Abi-Homestay.apk"
+            className="menu-item w-full flex items-center justify-between p-3 rounded-lg hover:premium-glow group bg-surface-container-lowest transition-colors press-effect"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-on-secondary transition-colors">
+                <span className="material-symbols-outlined">android</span>
+              </div>
+              <div className="text-left">
+                <p className="font-body-md text-body-md font-bold text-primary-container group-hover:text-secondary transition-colors">
+                  Unduh Aplikasi Android (.apk)
+                </p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">
+                  Instal APK langsung ke HP Android (± 4 MB)
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-outline-variant group-hover:text-secondary transition-colors">
+              download
+            </span>
+          </a>
         </div>
       </div>
 
